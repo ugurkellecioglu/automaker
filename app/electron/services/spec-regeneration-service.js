@@ -368,37 +368,50 @@ class SpecRegenerationService {
       
       const options = {
         model: "claude-sonnet-4-20250514",
-        systemPrompt: `You are a feature management assistant. Your job is to read the app_spec.txt file and create DETAILED, COMPREHENSIVE feature entries based on the implementation_roadmap section.
+        systemPrompt: `You are a feature management assistant. Your job is to analyze an existing codebase, compare it against the app_spec.txt, and create feature entries for work that still needs to be done.
+
+**CRITICAL: You must analyze the existing codebase FIRST before creating features.**
 
 **Your Task:**
-1. Read the .automaker/app_spec.txt file thoroughly
-2. Parse the implementation_roadmap section (it contains phases with features listed)
-3. For EACH feature in the roadmap, use the UpdateFeatureStatus tool to create a detailed feature entry
-4. Set the initial status to "backlog" for all features
+1. Read the .automaker/app_spec.txt file thoroughly to understand the planned features
+2. **ANALYZE THE EXISTING CODEBASE** - Look at:
+   - package.json/requirements.txt for installed dependencies
+   - Source code structure (src/, app/, components/, pages/, etc.)
+   - Existing components, routes, API endpoints, database schemas
+   - Configuration files, authentication setup, etc.
+3. For EACH feature in the implementation_roadmap:
+   - Determine if it's ALREADY IMPLEMENTED (fully or partially)
+   - If fully implemented: Create with status "verified" and note what's done
+   - If partially implemented: Create with status "in_progress" and note remaining work
+   - If not started: Create with status "backlog"
 
 **IMPORTANT - For each feature you MUST provide:**
 - **featureId**: A descriptive ID (lowercase, hyphens for spaces). Example: "user-authentication", "budget-tracking"
-- **status**: "backlog" for all new features
+- **status**: 
+  - "verified" if feature is fully implemented in the codebase
+  - "in_progress" if partially implemented
+  - "backlog" if not yet started
 - **description**: A DETAILED description (2-4 sentences) explaining what the feature does, its purpose, and key functionality
 - **category**: The phase from the roadmap (e.g., "Phase 1: Foundation", "Phase 2: Core Logic", "Phase 3: Polish")
-- **steps**: An array of 4-8 clear, actionable implementation steps. Each step should be specific and completable.
-- **summary**: A brief one-line summary of the feature
+- **steps**: An array of 4-8 clear, actionable implementation steps. For verified features, these are what WAS done. For backlog, these are what NEEDS to be done.
+- **summary**: A brief one-line summary. For verified features, describe what's implemented.
+
+**Example of analyzing existing code:**
+If you find NextAuth.js configured in the codebase with working login pages, the user-authentication feature should be "verified" not "backlog".
 
 **Example of a well-defined feature:**
 {
   "featureId": "user-authentication",
-  "status": "backlog",
-  "description": "Implement secure user authentication system with email/password login, OAuth integration for Google and Facebook, password reset functionality, and session management. This forms the foundation for all user-specific features.",
+  "status": "verified",  // Because we found it's already implemented
+  "description": "Secure user authentication system with email/password login and session management. Already implemented using NextAuth.js with email provider.",
   "category": "Phase 1: Foundation",
   "steps": [
-    "Set up authentication provider (NextAuth.js or similar)",
-    "Configure email/password authentication",
-    "Implement social login (Google, Facebook OAuth)",
-    "Create login and registration UI components",
-    "Add password reset flow with email verification",
-    "Implement session management and token refresh"
+    "Set up authentication provider (NextAuth.js) - DONE",
+    "Configure email/password authentication - DONE",
+    "Create login and registration UI components - DONE",
+    "Implement session management - DONE"
   ],
-  "summary": "Secure authentication with email/password and social login"
+  "summary": "Authentication implemented with NextAuth.js email provider"
 }
 
 **Feature Storage:**
@@ -418,24 +431,33 @@ Use the UpdateFeatureStatus tool to create features with ALL the fields above.`,
         abortController: abortController,
       };
       
-      const prompt = `Please read the .automaker/app_spec.txt file and create DETAILED feature entries for ALL features listed in the implementation_roadmap section.
+      const prompt = `Analyze this project and create feature entries based on the app_spec.txt implementation roadmap.
+
+**IMPORTANT: You must analyze the existing codebase to determine what's already implemented.**
 
 **Your workflow:**
-1. Read the app_spec.txt file completely
-2. Identify ALL features from the implementation_roadmap section
-3. For EACH feature, call UpdateFeatureStatus with ALL required fields:
+1. **First, analyze the existing codebase:**
+   - Read package.json or similar config files to see what's installed
+   - Explore the source code structure (use Glob to list directories)
+   - Look at key files: components, pages, API routes, database schemas
+   - Check for authentication, routing, state management, etc.
 
-**Required for each UpdateFeatureStatus call:**
-- featureId: Descriptive ID (lowercase, hyphens). Example: "user-authentication"
-- status: "backlog"
-- description: 2-4 sentences explaining the feature in detail
-- category: The phase name (e.g., "Phase 1: Foundation", "Phase 2: Core Logic")
-- steps: Array of 4-8 specific implementation steps
-- summary: One-line summary
+2. **Then, read .automaker/app_spec.txt** to see the implementation roadmap
 
-**Do NOT create features with just a summary - each feature needs description, category, AND steps.**
+3. **For EACH feature in the roadmap, determine its status:**
+   - Is it ALREADY IMPLEMENTED in the codebase? → status: "verified"
+   - Is it PARTIALLY IMPLEMENTED? → status: "in_progress"  
+   - Is it NOT STARTED? → status: "backlog"
 
-Start by reading the app_spec.txt file, then create each feature with full detail.`;
+4. **Create each feature with UpdateFeatureStatus including ALL fields:**
+   - featureId: Descriptive ID (lowercase, hyphens)
+   - status: "verified", "in_progress", or "backlog" based on your analysis
+   - description: 2-4 sentences explaining the feature
+   - category: The phase name from the roadmap
+   - steps: Array of 4-8 implementation steps
+   - summary: One-line summary (for verified features, note what's implemented)
+
+**Start by exploring the project structure, then read the app_spec, then create features with accurate statuses.**`;
       
       const currentQuery = query({ prompt, options });
       execution.query = currentQuery;
