@@ -193,8 +193,8 @@ export class AutoModeService {
         throw new Error(`Feature ${featureId} not found`);
       }
 
-      // Update feature status to in-progress
-      await this.updateFeatureStatus(projectPath, featureId, "in-progress");
+      // Update feature status to in_progress
+      await this.updateFeatureStatus(projectPath, featureId, "in_progress");
 
       // Build the prompt
       const prompt = this.buildFeaturePrompt(feature);
@@ -202,8 +202,8 @@ export class AutoModeService {
       // Run the agent
       await this.runAgent(workDir, featureId, prompt, abortController);
 
-      // Mark as completed
-      await this.updateFeatureStatus(projectPath, featureId, "completed");
+      // Mark as waiting_approval for user review
+      await this.updateFeatureStatus(projectPath, featureId, "waiting_approval");
 
       this.emitAutoModeEvent("auto_mode_feature_complete", {
         featureId,
@@ -226,7 +226,7 @@ export class AutoModeService {
                            errorMessage.includes("authentication_failed");
 
         console.error(`[AutoMode] Feature ${featureId} failed:`, error);
-        await this.updateFeatureStatus(projectPath, featureId, "failed");
+        await this.updateFeatureStatus(projectPath, featureId, "backlog");
         this.emitAutoModeEvent("auto_mode_error", {
           featureId,
           error: errorMessage,

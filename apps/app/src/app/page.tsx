@@ -17,7 +17,13 @@ import { useSetupStore } from "@/store/setup-store";
 import { getElectronAPI, isElectron } from "@/lib/electron";
 
 export default function Home() {
-  const { currentView, setCurrentView, setIpcConnected, theme, currentProject } = useAppStore();
+  const {
+    currentView,
+    setCurrentView,
+    setIpcConnected,
+    theme,
+    currentProject,
+  } = useAppStore();
   const { isFirstRun, setupComplete } = useSetupStore();
   const [isMounted, setIsMounted] = useState(false);
   const [streamerPanelOpen, setStreamerPanelOpen] = useState(false);
@@ -28,7 +34,11 @@ export default function Home() {
     const activeElement = document.activeElement;
     if (activeElement) {
       const tagName = activeElement.tagName.toLowerCase();
-      if (tagName === "input" || tagName === "textarea" || tagName === "select") {
+      if (
+        tagName === "input" ||
+        tagName === "textarea" ||
+        tagName === "select"
+      ) {
         return;
       }
       if (activeElement.getAttribute("contenteditable") === "true") {
@@ -80,7 +90,9 @@ export default function Home() {
     });
 
     if (isMounted && isFirstRun && !setupComplete) {
-      console.log("[Setup Flow] Redirecting to setup wizard (first run, not complete)");
+      console.log(
+        "[Setup Flow] Redirecting to setup wizard (first run, not complete)"
+      );
       setCurrentView("setup");
     } else if (isMounted && setupComplete) {
       console.log("[Setup Flow] Setup already complete, showing normal view");
@@ -201,7 +213,10 @@ export default function Home() {
   return (
     <main className="flex h-screen overflow-hidden" data-testid="app-container">
       <Sidebar />
-      <div className="flex-1 flex flex-col overflow-hidden transition-all duration-300" style={{ marginRight: streamerPanelOpen ? '250px' : '0' }}>
+      <div
+        className="flex-1 flex flex-col overflow-hidden transition-all duration-300"
+        style={{ marginRight: streamerPanelOpen ? "250px" : "0" }}
+      >
         {renderView()}
       </div>
 
@@ -215,7 +230,7 @@ export default function Home() {
       {/* Hidden streamer panel - opens with "\" key, pushes content */}
       <div
         className={`fixed top-0 right-0 h-full w-[250px] bg-background border-l border-border transition-transform duration-300 ${
-          streamerPanelOpen ? 'translate-x-0' : 'translate-x-full'
+          streamerPanelOpen ? "translate-x-0" : "translate-x-full"
         }`}
       />
     </main>

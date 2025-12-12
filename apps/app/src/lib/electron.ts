@@ -415,7 +415,10 @@ export interface ElectronAPI {
     onAuthProgress?: (callback: (progress: any) => void) => () => void;
   };
   agent?: {
-    start: (sessionId: string, workingDirectory?: string) => Promise<{
+    start: (
+      sessionId: string,
+      workingDirectory?: string
+    ) => Promise<{
       success: boolean;
       messages?: Message[];
       error?: string;
@@ -463,9 +466,15 @@ export interface ElectronAPI {
       name?: string,
       tags?: string[]
     ) => Promise<{ success: boolean; error?: string }>;
-    archive: (sessionId: string) => Promise<{ success: boolean; error?: string }>;
-    unarchive: (sessionId: string) => Promise<{ success: boolean; error?: string }>;
-    delete: (sessionId: string) => Promise<{ success: boolean; error?: string }>;
+    archive: (
+      sessionId: string
+    ) => Promise<{ success: boolean; error?: string }>;
+    unarchive: (
+      sessionId: string
+    ) => Promise<{ success: boolean; error?: string }>;
+    delete: (
+      sessionId: string
+    ) => Promise<{ success: boolean; error?: string }>;
   };
 }
 
