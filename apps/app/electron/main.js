@@ -35,14 +35,18 @@ async function startServer() {
   let command, args, serverPath;
   if (isDev) {
     // In development, use tsx to run TypeScript directly
-    // Use the node executable that's running Electron
-    command = process.execPath; // This is the path to node.exe
+    // Use node from PATH (process.execPath in Electron points to Electron, not Node.js)
+    // spawn() resolves "node" from PATH on all platforms (Windows, Linux, macOS)
+    command = "node";
     serverPath = path.join(__dirname, "../../server/src/index.ts");
-    
+
     // Find tsx CLI - check server node_modules first, then root
-    const serverNodeModules = path.join(__dirname, "../../server/node_modules/tsx");
+    const serverNodeModules = path.join(
+      __dirname,
+      "../../server/node_modules/tsx"
+    );
     const rootNodeModules = path.join(__dirname, "../../../node_modules/tsx");
-    
+
     let tsxCliPath;
     if (fs.existsSync(path.join(serverNodeModules, "dist/cli.mjs"))) {
       tsxCliPath = path.join(serverNodeModules, "dist/cli.mjs");
@@ -51,12 +55,16 @@ async function startServer() {
     } else {
       // Last resort: try require.resolve
       try {
-        tsxCliPath = require.resolve("tsx/cli.mjs", { paths: [path.join(__dirname, "../../server")] });
+        tsxCliPath = require.resolve("tsx/cli.mjs", {
+          paths: [path.join(__dirname, "../../server")],
+        });
       } catch {
-        throw new Error("Could not find tsx. Please run 'npm install' in the server directory.");
+        throw new Error(
+          "Could not find tsx. Please run 'npm install' in the server directory."
+        );
       }
     }
-    
+
     args = [tsxCliPath, "watch", serverPath];
   } else {
     // In production, use compiled JavaScript
@@ -105,13 +113,16 @@ async function waitForServer(maxAttempts = 30) {
   for (let i = 0; i < maxAttempts; i++) {
     try {
       await new Promise((resolve, reject) => {
-        const req = http.get(`http://localhost:${SERVER_PORT}/api/health`, (res) => {
-          if (res.statusCode === 200) {
-            resolve();
-          } else {
-            reject(new Error(`Status: ${res.statusCode}`));
+        const req = http.get(
+          `http://localhost:${SERVER_PORT}/api/health`,
+          (res) => {
+            if (res.statusCode === 200) {
+              resolve();
+            } else {
+              reject(new Error(`Status: ${res.statusCode}`));
+            }
           }
-        });
+        );
         req.on("error", reject);
         req.setTimeout(1000, () => {
           req.destroy();
