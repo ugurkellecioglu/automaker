@@ -41,7 +41,12 @@ async function findExistingWorktreeForBranch(
       } else if (line === "" && currentPath && currentBranch) {
         // End of a worktree entry
         if (currentBranch === branchName) {
-          return { path: currentPath, branch: currentBranch };
+          // Resolve to absolute path - git may return relative paths
+          // Critical for cross-platform compatibility (Windows, macOS, Linux)
+          const resolvedPath = path.isAbsolute(currentPath)
+            ? path.resolve(currentPath)
+            : path.resolve(projectPath, currentPath);
+          return { path: resolvedPath, branch: currentBranch };
         }
         currentPath = null;
         currentBranch = null;
@@ -50,7 +55,11 @@ async function findExistingWorktreeForBranch(
 
     // Check the last entry (if file doesn't end with newline)
     if (currentPath && currentBranch && currentBranch === branchName) {
-      return { path: currentPath, branch: currentBranch };
+      // Resolve to absolute path for cross-platform compatibility
+      const resolvedPath = path.isAbsolute(currentPath)
+        ? path.resolve(currentPath)
+        : path.resolve(projectPath, currentPath);
+      return { path: resolvedPath, branch: currentBranch };
     }
 
     return null;
@@ -144,10 +153,13 @@ export function createCreateHandler() {
       // Track the branch so it persists in the UI even after worktree is removed
       await trackBranch(projectPath, branchName);
 
+      // Resolve to absolute path for cross-platform compatibility
+      // normalizePath converts to forward slashes for API consistency
+      const absoluteWorktreePath = path.resolve(worktreePath);
       res.json({
         success: true,
         worktree: {
-          path: normalizePath(worktreePath),
+          path: normalizePath(absoluteWorktreePath),
           branch: branchName,
           isNew: !branchExists,
         },

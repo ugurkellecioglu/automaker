@@ -207,10 +207,26 @@ export class AutoModeService {
 
     // Use provided worktree path if given, otherwise setup new worktree if enabled
     if (providedWorktreePath) {
-      // User selected a specific worktree - use it directly
-      worktreePath = providedWorktreePath;
-      console.log(`[AutoMode] Using provided worktree path: ${worktreePath}`);
-    } else if (useWorktrees) {
+      // Resolve to absolute path - critical for cross-platform compatibility
+      // On Windows, relative paths or paths with forward slashes may not work correctly with cwd
+      // On all platforms, absolute paths ensure commands execute in the correct directory
+      try {
+        // Resolve relative paths relative to projectPath, absolute paths as-is
+        const resolvedPath = path.isAbsolute(providedWorktreePath)
+          ? path.resolve(providedWorktreePath)
+          : path.resolve(projectPath, providedWorktreePath);
+        
+        // Verify the path exists before using it
+        await fs.access(resolvedPath);
+        worktreePath = resolvedPath;
+        console.log(`[AutoMode] Using provided worktree path (resolved): ${worktreePath}`);
+      } catch (error) {
+        console.error(`[AutoMode] Provided worktree path invalid or doesn't exist: ${providedWorktreePath}`, error);
+        // Fall through to create new worktree or use project path
+      }
+    }
+    
+    if (!worktreePath && useWorktrees) {
       // No specific worktree provided, create a new one for this feature
       worktreePath = await this.setupWorktree(
         projectPath,
@@ -219,7 +235,8 @@ export class AutoModeService {
       );
     }
 
-    const workDir = worktreePath || projectPath;
+    // Ensure workDir is always an absolute path for cross-platform compatibility
+    const workDir = worktreePath ? path.resolve(worktreePath) : path.resolve(projectPath);
 
     this.runningFeatures.set(featureId, {
       featureId,
@@ -382,14 +399,21 @@ export class AutoModeService {
 
     // Use the provided worktreePath (from the feature's assigned branch)
     // Fall back to project path if not provided
-    let workDir = projectPath;
+    let workDir = path.resolve(projectPath);
     let worktreePath: string | null = null;
 
     if (providedWorktreePath) {
       try {
-        await fs.access(providedWorktreePath);
-        workDir = providedWorktreePath;
-        worktreePath = providedWorktreePath;
+        // Resolve to absolute path - critical for cross-platform compatibility
+        // On Windows, relative paths or paths with forward slashes may not work correctly with cwd
+        // On all platforms, absolute paths ensure commands execute in the correct directory
+        const resolvedPath = path.isAbsolute(providedWorktreePath)
+          ? path.resolve(providedWorktreePath)
+          : path.resolve(projectPath, providedWorktreePath);
+        
+        await fs.access(resolvedPath);
+        workDir = resolvedPath;
+        worktreePath = resolvedPath;
       } catch {
         // Worktree path provided but doesn't exist, use project path
         console.log(`[AutoMode] Provided worktreePath doesn't exist: ${providedWorktreePath}, using project path`);
@@ -863,7 +887,13 @@ Format your response as a structured markdown document.`;
         } else if (line === "" && currentPath && currentBranch) {
           // End of a worktree entry
           if (currentBranch === branchName) {
-            return currentPath;
+            // Resolve to absolute path - git may return relative paths
+            // On Windows, this is critical for cwd to work correctly
+            // On all platforms, absolute paths ensure consistent behavior
+            const resolvedPath = path.isAbsolute(currentPath)
+              ? path.resolve(currentPath)
+              : path.resolve(projectPath, currentPath);
+            return resolvedPath;
           }
           currentPath = null;
           currentBranch = null;
@@ -872,7 +902,11 @@ Format your response as a structured markdown document.`;
 
       // Check the last entry (if file doesn't end with newline)
       if (currentPath && currentBranch && currentBranch === branchName) {
-        return currentPath;
+        // Resolve to absolute path for cross-platform compatibility
+        const resolvedPath = path.isAbsolute(currentPath)
+          ? path.resolve(currentPath)
+          : path.resolve(projectPath, currentPath);
+        return resolvedPath;
       }
 
       return null;
@@ -889,6 +923,7 @@ Format your response as a structured markdown document.`;
     // First, check if git already has a worktree for this branch (anywhere)
     const existingWorktree = await this.findExistingWorktreeForBranch(projectPath, branchName);
     if (existingWorktree) {
+      // Path is already resolved to absolute in findExistingWorktreeForBranch
       console.log(`[AutoMode] Found existing worktree for branch "${branchName}" at: ${existingWorktree}`);
       return existingWorktree;
     }
@@ -902,7 +937,8 @@ Format your response as a structured markdown document.`;
     // Check if worktree directory already exists (might not be linked to branch)
     try {
       await fs.access(worktreePath);
-      return worktreePath;
+      // Return absolute path for cross-platform compatibility
+      return path.resolve(worktreePath);
     } catch {
       // Create new worktree
     }
@@ -919,13 +955,13 @@ Format your response as a structured markdown document.`;
       await execAsync(`git worktree add "${worktreePath}" ${branchName}`, {
         cwd: projectPath,
       });
+      // Return absolute path for cross-platform compatibility
+      return path.resolve(worktreePath);
     } catch (error) {
       // Worktree creation failed, fall back to direct execution
       console.error(`[AutoMode] Worktree creation failed:`, error);
-      return projectPath;
+      return path.resolve(projectPath);
     }
-
-    return worktreePath;
   }
 
   private async loadFeature(
