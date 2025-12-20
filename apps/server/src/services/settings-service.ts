@@ -88,9 +88,27 @@ async function fileExists(filePath: string): Promise<boolean> {
   }
 }
 
+/**
+ * SettingsService - Manages persistent storage of user settings and credentials
+ *
+ * Handles reading and writing settings to JSON files with atomic operations
+ * for reliability. Provides three levels of settings:
+ * - Global settings: shared preferences in {dataDir}/settings.json
+ * - Credentials: sensitive API keys in {dataDir}/credentials.json
+ * - Project settings: per-project overrides in {projectPath}/.automaker/settings.json
+ *
+ * All operations are atomic (write to temp file, then rename) to prevent corruption.
+ * Missing files are treated as empty and return defaults on read.
+ * Updates use deep merge for nested objects like keyboardShortcuts and apiKeys.
+ */
 export class SettingsService {
   private dataDir: string;
 
+  /**
+   * Create a new SettingsService instance
+   *
+   * @param dataDir - Absolute path to global data directory (e.g., ~/.automaker)
+   */
   constructor(dataDir: string) {
     this.dataDir = dataDir;
   }
@@ -100,7 +118,13 @@ export class SettingsService {
   // ============================================================================
 
   /**
-   * Get global settings
+   * Get global settings with defaults applied for any missing fields
+   *
+   * Reads from {dataDir}/settings.json. If file doesn't exist, returns defaults.
+   * Missing fields are filled in from DEFAULT_GLOBAL_SETTINGS for forward/backward
+   * compatibility during schema migrations.
+   *
+   * @returns Promise resolving to complete GlobalSettings object
    */
   async getGlobalSettings(): Promise<GlobalSettings> {
     const settingsPath = getGlobalSettingsPath(this.dataDir);
@@ -121,7 +145,13 @@ export class SettingsService {
   }
 
   /**
-   * Update global settings (partial update)
+   * Update global settings with partial changes
+   *
+   * Performs a deep merge: nested objects like keyboardShortcuts are merged,
+   * not replaced. Updates are written atomically. Creates dataDir if needed.
+   *
+   * @param updates - Partial GlobalSettings to merge (only provided fields are updated)
+   * @returns Promise resolving to complete updated GlobalSettings
    */
   async updateGlobalSettings(
     updates: Partial<GlobalSettings>
@@ -152,6 +182,10 @@ export class SettingsService {
 
   /**
    * Check if global settings file exists
+   *
+   * Used to determine if user has previously configured settings.
+   *
+   * @returns Promise resolving to true if {dataDir}/settings.json exists
    */
   async hasGlobalSettings(): Promise<boolean> {
     const settingsPath = getGlobalSettingsPath(this.dataDir);
@@ -163,7 +197,13 @@ export class SettingsService {
   // ============================================================================
 
   /**
-   * Get credentials
+   * Get credentials with defaults applied
+   *
+   * Reads from {dataDir}/credentials.json. If file doesn't exist, returns
+   * defaults (empty API keys). Used primarily by backend for API authentication.
+   * UI should use getMaskedCredentials() instead.
+   *
+   * @returns Promise resolving to complete Credentials object
    */
   async getCredentials(): Promise<Credentials> {
     const credentialsPath = getCredentialsPath(this.dataDir);
@@ -183,7 +223,14 @@ export class SettingsService {
   }
 
   /**
-   * Update credentials (partial update)
+   * Update credentials with partial changes
+   *
+   * Updates individual API keys. Uses deep merge for apiKeys object.
+   * Creates dataDir if needed. Credentials are written atomically.
+   * WARNING: Use only in secure contexts - keys are unencrypted.
+   *
+   * @param updates - Partial Credentials (usually just apiKeys)
+   * @returns Promise resolving to complete updated Credentials object
    */
   async updateCredentials(
     updates: Partial<Credentials>
@@ -213,7 +260,13 @@ export class SettingsService {
   }
 
   /**
-   * Get masked credentials (for UI display - don't expose full keys)
+   * Get masked credentials safe for UI display
+   *
+   * Returns API keys masked for security (first 4 and last 4 chars visible).
+   * Use this for showing credential status in UI without exposing full keys.
+   * Each key includes a 'configured' boolean and masked string representation.
+   *
+   * @returns Promise resolving to masked credentials object with each provider's status
    */
   async getMaskedCredentials(): Promise<{
     anthropic: { configured: boolean; masked: string };
@@ -245,6 +298,10 @@ export class SettingsService {
 
   /**
    * Check if credentials file exists
+   *
+   * Used to determine if user has configured any API keys.
+   *
+   * @returns Promise resolving to true if {dataDir}/credentials.json exists
    */
   async hasCredentials(): Promise<boolean> {
     const credentialsPath = getCredentialsPath(this.dataDir);
@@ -256,7 +313,14 @@ export class SettingsService {
   // ============================================================================
 
   /**
-   * Get project settings
+   * Get project-specific settings with defaults applied
+   *
+   * Reads from {projectPath}/.automaker/settings.json. If file doesn't exist,
+   * returns defaults. Project settings are optional - missing values fall back
+   * to global settings on the UI side.
+   *
+   * @param projectPath - Absolute path to project directory
+   * @returns Promise resolving to complete ProjectSettings object
    */
   async getProjectSettings(projectPath: string): Promise<ProjectSettings> {
     const settingsPath = getProjectSettingsPath(projectPath);
@@ -272,7 +336,14 @@ export class SettingsService {
   }
 
   /**
-   * Update project settings (partial update)
+   * Update project-specific settings with partial changes
+   *
+   * Performs a deep merge on boardBackground. Creates .automaker directory
+   * in project if needed. Updates are written atomically.
+   *
+   * @param projectPath - Absolute path to project directory
+   * @param updates - Partial ProjectSettings to merge
+   * @returns Promise resolving to complete updated ProjectSettings
    */
   async updateProjectSettings(
     projectPath: string,
@@ -304,6 +375,9 @@ export class SettingsService {
 
   /**
    * Check if project settings file exists
+   *
+   * @param projectPath - Absolute path to project directory
+   * @returns Promise resolving to true if {projectPath}/.automaker/settings.json exists
    */
   async hasProjectSettings(projectPath: string): Promise<boolean> {
     const settingsPath = getProjectSettingsPath(projectPath);
@@ -315,8 +389,15 @@ export class SettingsService {
   // ============================================================================
 
   /**
-   * Migrate settings from localStorage data
-   * This is called when the UI detects it has localStorage data but no settings files
+   * Migrate settings from localStorage to file-based storage
+   *
+   * Called during onboarding when UI detects localStorage data but no settings files.
+   * Extracts global settings, credentials, and per-project settings from various
+   * localStorage keys and writes them to the new file-based storage.
+   * Collects errors but continues on partial failures.
+   *
+   * @param localStorageData - Object containing localStorage key/value pairs to migrate
+   * @returns Promise resolving to migration result with success status and error list
    */
   async migrateFromLocalStorage(localStorageData: {
     "automaker-storage"?: string;
@@ -534,7 +615,12 @@ export class SettingsService {
   }
 
   /**
-   * Get the DATA_DIR path (for debugging/info)
+   * Get the data directory path
+   *
+   * Returns the absolute path to the directory where global settings and
+   * credentials are stored. Useful for logging, debugging, and validation.
+   *
+   * @returns Absolute path to data directory
    */
   getDataDir(): string {
     return this.dataDir;

@@ -1,5 +1,11 @@
 /**
- * PUT /api/settings/global - Update global settings
+ * PUT /api/settings/global - Update global user settings
+ *
+ * Accepts partial GlobalSettings update. Fields provided are merged into
+ * existing settings (not replaced). Returns updated settings.
+ *
+ * Request body: `Partial<GlobalSettings>`
+ * Response: `{ "success": true, "settings": GlobalSettings }`
  */
 
 import type { Request, Response } from "express";
@@ -7,6 +13,12 @@ import type { SettingsService } from "../../../services/settings-service.js";
 import type { GlobalSettings } from "../../../types/settings.js";
 import { getErrorMessage, logError } from "../common.js";
 
+/**
+ * Create handler factory for PUT /api/settings/global
+ *
+ * @param settingsService - Instance of SettingsService for file I/O
+ * @returns Express request handler
+ */
 export function createUpdateGlobalHandler(settingsService: SettingsService) {
   return async (req: Request, res: Response): Promise<void> => {
     try {

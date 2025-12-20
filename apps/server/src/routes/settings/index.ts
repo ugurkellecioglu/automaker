@@ -1,5 +1,15 @@
 /**
  * Settings routes - HTTP API for persistent file-based settings
+ *
+ * Provides endpoints for:
+ * - Status checking (migration readiness)
+ * - Global settings CRUD
+ * - Credentials management
+ * - Project-specific settings
+ * - localStorage to file migration
+ *
+ * All endpoints use handler factories that receive the SettingsService instance.
+ * Mounted at /api/settings in the main server.
  */
 
 import { Router } from "express";
@@ -13,6 +23,25 @@ import { createUpdateProjectHandler } from "./routes/update-project.js";
 import { createMigrateHandler } from "./routes/migrate.js";
 import { createStatusHandler } from "./routes/status.js";
 
+/**
+ * Create settings router with all endpoints
+ *
+ * Registers handlers for all settings-related HTTP endpoints.
+ * Each handler is created with the provided SettingsService instance.
+ *
+ * Endpoints:
+ * - GET /status - Check migration status and data availability
+ * - GET /global - Get global settings
+ * - PUT /global - Update global settings
+ * - GET /credentials - Get masked credentials (safe for UI)
+ * - PUT /credentials - Update API keys
+ * - POST /project - Get project settings (requires projectPath in body)
+ * - PUT /project - Update project settings
+ * - POST /migrate - Migrate settings from localStorage
+ *
+ * @param settingsService - Instance of SettingsService for file I/O
+ * @returns Express Router configured with all settings endpoints
+ */
 export function createSettingsRoutes(settingsService: SettingsService): Router {
   const router = Router();
 

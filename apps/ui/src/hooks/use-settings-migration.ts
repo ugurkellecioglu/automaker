@@ -1,27 +1,44 @@
 /**
- * Settings Migration Hook
+ * Settings Migration Hook and Sync Functions
  *
- * This hook handles migrating settings from localStorage to file-based storage.
- * It runs on app startup and:
- * 1. Checks if server has settings files
- * 2. If not, migrates localStorage data to server
- * 3. Clears old localStorage keys after successful migration
+ * Handles migrating user settings from localStorage to persistent file-based storage
+ * on app startup. Also provides utility functions for syncing individual setting
+ * categories to the server.
  *
- * This approach keeps localStorage as a fast cache while ensuring
- * settings are persisted to files that survive app updates.
+ * Migration flow:
+ * 1. useSettingsMigration() hook checks server for existing settings files
+ * 2. If none exist, collects localStorage data and sends to /api/settings/migrate
+ * 3. After successful migration, clears deprecated localStorage keys
+ * 4. Maintains automaker-storage in localStorage as fast cache for Zustand
+ *
+ * Sync functions for incremental updates:
+ * - syncSettingsToServer: Writes global settings to file
+ * - syncCredentialsToServer: Writes API keys to file
+ * - syncProjectSettingsToServer: Writes project-specific overrides
  */
 
 import { useEffect, useState, useRef } from "react";
 import { getHttpApiClient } from "@/lib/http-api-client";
 import { isElectron } from "@/lib/electron";
 
+/**
+ * State returned by useSettingsMigration hook
+ */
 interface MigrationState {
+  /** Whether migration check has completed */
   checked: boolean;
+  /** Whether migration actually occurred */
   migrated: boolean;
+  /** Error message if migration failed (null if success/no-op) */
   error: string | null;
 }
 
-// localStorage keys to migrate
+/**
+ * localStorage keys that may contain settings to migrate
+ *
+ * These keys are collected and sent to the server for migration.
+ * The automaker-storage key is handled specially as it's still used by Zustand.
+ */
 const LOCALSTORAGE_KEYS = [
   "automaker-storage",
   "automaker-setup",
@@ -30,19 +47,34 @@ const LOCALSTORAGE_KEYS = [
   "automaker:lastProjectDir",
 ] as const;
 
-// Keys to clear after migration (not automaker-storage as it's still used by Zustand)
+/**
+ * localStorage keys to remove after successful migration
+ *
+ * automaker-storage is intentionally NOT in this list because Zustand still uses it
+ * as a cache. These other keys have been migrated and are no longer needed.
+ */
 const KEYS_TO_CLEAR_AFTER_MIGRATION = [
   "worktree-panel-collapsed",
   "file-browser-recent-folders",
   "automaker:lastProjectDir",
-  // Legacy keys
+  // Legacy keys from older versions
   "automaker_projects",
   "automaker_current_project",
   "automaker_trashed_projects",
 ] as const;
 
 /**
- * Hook to handle settings migration from localStorage to file-based storage
+ * React hook to handle settings migration from localStorage to file-based storage
+ *
+ * Runs automatically once on component mount. Returns state indicating whether
+ * migration check is complete, whether migration occurred, and any errors.
+ *
+ * Only runs in Electron mode (isElectron() must be true). Web mode uses different
+ * storage mechanisms.
+ *
+ * The hook uses a ref to ensure it only runs once despite multiple mounts.
+ *
+ * @returns MigrationState with checked, migrated, and error fields
  */
 export function useSettingsMigration(): MigrationState {
   const [state, setState] = useState<MigrationState>({
@@ -154,8 +186,17 @@ export function useSettingsMigration(): MigrationState {
 }
 
 /**
- * Sync current settings to the server
- * Call this when important settings change
+ * Sync current global settings to file-based server storage
+ *
+ * Reads the current Zustand state from localStorage and sends all global settings
+ * to the server to be written to {dataDir}/settings.json.
+ *
+ * Call this when important global settings change (theme, UI preferences, profiles, etc.)
+ * Safe to call from store subscribers or change handlers.
+ *
+ * Only functions in Electron mode. Returns false if not in Electron or on error.
+ *
+ * @returns Promise resolving to true if sync succeeded, false otherwise
  */
 export async function syncSettingsToServer(): Promise<boolean> {
   if (!isElectron()) return false;
@@ -205,8 +246,18 @@ export async function syncSettingsToServer(): Promise<boolean> {
 }
 
 /**
- * Sync credentials to the server
- * Call this when API keys change
+ * Sync API credentials to file-based server storage
+ *
+ * Sends API keys (partial update supported) to the server to be written to
+ * {dataDir}/credentials.json. Credentials are kept separate from settings for security.
+ *
+ * Call this when API keys are added or updated in settings UI.
+ * Only requires providing the keys that have changed.
+ *
+ * Only functions in Electron mode. Returns false if not in Electron or on error.
+ *
+ * @param apiKeys - Partial credential object with optional anthropic, google, openai keys
+ * @returns Promise resolving to true if sync succeeded, false otherwise
  */
 export async function syncCredentialsToServer(apiKeys: {
   anthropic?: string;
@@ -226,8 +277,20 @@ export async function syncCredentialsToServer(apiKeys: {
 }
 
 /**
- * Sync project settings to the server
- * Call this when project-specific settings change
+ * Sync project-specific settings to file-based server storage
+ *
+ * Sends project settings (theme, worktree config, board customization) to the server
+ * to be written to {projectPath}/.automaker/settings.json.
+ *
+ * These settings override global settings for specific projects.
+ * Supports partial updates - only include fields that have changed.
+ *
+ * Call this when project settings are modified in the board or settings UI.
+ * Only functions in Electron mode. Returns false if not in Electron or on error.
+ *
+ * @param projectPath - Absolute path to project directory
+ * @param updates - Partial ProjectSettings with optional theme, worktree, and board settings
+ * @returns Promise resolving to true if sync succeeded, false otherwise
  */
 export async function syncProjectSettingsToServer(
   projectPath: string,

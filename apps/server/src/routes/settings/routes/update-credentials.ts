@@ -1,5 +1,11 @@
 /**
- * PUT /api/settings/credentials - Update credentials
+ * PUT /api/settings/credentials - Update API credentials
+ *
+ * Updates API keys for Anthropic, Google, or OpenAI. Partial updates supported.
+ * Returns masked credentials for verification without exposing full keys.
+ *
+ * Request body: `Partial<Credentials>` (usually just apiKeys)
+ * Response: `{ "success": true, "credentials": { anthropic, google, openai } }`
  */
 
 import type { Request, Response } from "express";
@@ -7,6 +13,12 @@ import type { SettingsService } from "../../../services/settings-service.js";
 import type { Credentials } from "../../../types/settings.js";
 import { getErrorMessage, logError } from "../common.js";
 
+/**
+ * Create handler factory for PUT /api/settings/credentials
+ *
+ * @param settingsService - Instance of SettingsService for file I/O
+ * @returns Express request handler
+ */
 export function createUpdateCredentialsHandler(
   settingsService: SettingsService
 ) {

@@ -1,11 +1,45 @@
 /**
- * POST /api/settings/migrate - Migrate settings from localStorage
+ * POST /api/settings/migrate - Migrate settings from localStorage to file storage
+ *
+ * Called during onboarding when UI detects localStorage data but no settings files.
+ * Extracts settings from various localStorage keys and writes to new file structure.
+ * Collects errors but continues on partial failures (graceful degradation).
+ *
+ * Request body:
+ * ```json
+ * {
+ *   "data": {
+ *     "automaker-storage"?: string,
+ *     "automaker-setup"?: string,
+ *     "worktree-panel-collapsed"?: string,
+ *     "file-browser-recent-folders"?: string,
+ *     "automaker:lastProjectDir"?: string
+ *   }
+ * }
+ * ```
+ *
+ * Response:
+ * ```json
+ * {
+ *   "success": boolean,
+ *   "migratedGlobalSettings": boolean,
+ *   "migratedCredentials": boolean,
+ *   "migratedProjectCount": number,
+ *   "errors": string[]
+ * }
+ * ```
  */
 
 import type { Request, Response } from "express";
 import type { SettingsService } from "../../../services/settings-service.js";
 import { getErrorMessage, logError, logger } from "../common.js";
 
+/**
+ * Create handler factory for POST /api/settings/migrate
+ *
+ * @param settingsService - Instance of SettingsService for file I/O
+ * @returns Express request handler
+ */
 export function createMigrateHandler(settingsService: SettingsService) {
   return async (req: Request, res: Response): Promise<void> => {
     try {
