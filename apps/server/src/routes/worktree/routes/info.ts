@@ -5,9 +5,7 @@
 import type { Request, Response } from "express";
 import { exec } from "child_process";
 import { promisify } from "util";
-import path from "path";
-import fs from "fs/promises";
-import { getErrorMessage, logError, normalizePath } from "../common.js";
+import { getErrorMessage, logError, normalizePath, resolveWorktreePath } from "../common.js";
 
 const execAsync = promisify(exec);
 
@@ -29,10 +27,19 @@ export function createInfoHandler() {
         return;
       }
 
-      // Check if worktree exists (git worktrees are stored in project directory)
-      const worktreePath = path.join(projectPath, ".worktrees", featureId);
+      // Resolve the actual worktree path using the helper function
+      // This handles cases where:
+      // - projectPath is already the worktree
+      // - worktree is at projectPath/.worktrees/featureId
+      // - worktree directory name differs from featureId (sanitized branch names)
+      const worktreePath = await resolveWorktreePath(projectPath, featureId);
+
+      if (!worktreePath) {
+        res.json({ success: true, worktreePath: null, branchName: null });
+        return;
+      }
+
       try {
-        await fs.access(worktreePath);
         const { stdout } = await execAsync("git rev-parse --abbrev-ref HEAD", {
           cwd: worktreePath,
         });

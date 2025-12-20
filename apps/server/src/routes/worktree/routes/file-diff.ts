@@ -5,9 +5,7 @@
 import type { Request, Response } from "express";
 import { exec } from "child_process";
 import { promisify } from "util";
-import path from "path";
-import fs from "fs/promises";
-import { getErrorMessage, logError } from "../common.js";
+import { getErrorMessage, logError, resolveWorktreePath } from "../common.js";
 import { generateSyntheticDiffForNewFile } from "../../common.js";
 
 const execAsync = promisify(exec);
@@ -29,12 +27,20 @@ export function createFileDiffHandler() {
         return;
       }
 
-      // Git worktrees are stored in project directory
-      const worktreePath = path.join(projectPath, ".worktrees", featureId);
+      // Resolve the actual worktree path using the helper function
+      // This handles cases where:
+      // - projectPath is already the worktree
+      // - worktree is at projectPath/.worktrees/featureId
+      // - worktree directory name differs from featureId (sanitized branch names)
+      const worktreePath = await resolveWorktreePath(projectPath, featureId);
+
+      if (!worktreePath) {
+        // Worktree not found, return empty diff
+        res.json({ success: true, diff: "", filePath });
+        return;
+      }
 
       try {
-        await fs.access(worktreePath);
-
         // First check if the file is untracked
         const { stdout: status } = await execAsync(
           `git status --porcelain -- "${filePath}"`,

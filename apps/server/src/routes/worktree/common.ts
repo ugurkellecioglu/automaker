@@ -5,6 +5,8 @@
 import { createLogger } from "../../lib/logger.js";
 import { exec } from "child_process";
 import { promisify } from "util";
+import path from "path";
+import fs from "fs/promises";
 import {
   getErrorMessage as getErrorMessageShared,
   createLogError,
@@ -76,6 +78,99 @@ export function logWorktreeError(
 // Re-export shared utilities
 export { getErrorMessageShared as getErrorMessage };
 export const logError = createLogError(logger);
+
+/**
+ * Resolve the actual worktree path for a feature.
+ *
+ * This function handles multiple scenarios:
+ * 1. If projectPath itself is the worktree directory, return it
+ * 2. If the worktree exists at projectPath/.worktrees/featureId, return that
+ * 3. Look up the worktree using git worktree list to find by feature branch pattern
+ *
+ * @param projectPath - The project path (could be main repo or already a worktree)
+ * @param featureId - The feature ID to find the worktree for
+ * @returns The resolved worktree path, or null if not found
+ */
+export async function resolveWorktreePath(
+  projectPath: string,
+  featureId: string
+): Promise<string | null> {
+  // First, check if projectPath itself is the worktree we're looking for
+  // This handles the case where projectPath is already a worktree path
+  const projectBasename = path.basename(projectPath);
+  if (projectBasename === featureId || projectPath.includes(`/.worktrees/${featureId}`)) {
+    try {
+      await fs.access(projectPath);
+      return projectPath;
+    } catch {
+      // Path doesn't exist, continue to other checks
+    }
+  }
+
+  // Check the standard worktree location: projectPath/.worktrees/featureId
+  const standardWorktreePath = path.join(projectPath, ".worktrees", featureId);
+  try {
+    await fs.access(standardWorktreePath);
+    return standardWorktreePath;
+  } catch {
+    // Standard path doesn't exist, continue to git worktree lookup
+  }
+
+  // Try to find the worktree using git worktree list
+  // This handles cases where the worktree directory name differs from featureId
+  // (e.g., when using sanitized branch names)
+  try {
+    const { stdout } = await execAsync("git worktree list --porcelain", {
+      cwd: projectPath,
+    });
+
+    const lines = stdout.split("\n");
+    let currentPath: string | null = null;
+    let currentBranch: string | null = null;
+
+    for (const line of lines) {
+      if (line.startsWith("worktree ")) {
+        currentPath = line.slice(9);
+      } else if (line.startsWith("branch ")) {
+        currentBranch = line.slice(7).replace("refs/heads/", "");
+      } else if (line === "" && currentPath && currentBranch) {
+        // Check if this worktree matches the featureId
+        // Match by: branch name contains featureId, or path contains featureId
+        if (
+          currentBranch === featureId ||
+          currentBranch === `feature/${featureId}` ||
+          currentPath.includes(featureId)
+        ) {
+          // Resolve to absolute path for cross-platform compatibility
+          const resolvedPath = path.isAbsolute(currentPath)
+            ? path.resolve(currentPath)
+            : path.resolve(projectPath, currentPath);
+          return resolvedPath;
+        }
+        currentPath = null;
+        currentBranch = null;
+      }
+    }
+
+    // Check last entry if file doesn't end with newline
+    if (currentPath && currentBranch) {
+      if (
+        currentBranch === featureId ||
+        currentBranch === `feature/${featureId}` ||
+        currentPath.includes(featureId)
+      ) {
+        const resolvedPath = path.isAbsolute(currentPath)
+          ? path.resolve(currentPath)
+          : path.resolve(projectPath, currentPath);
+        return resolvedPath;
+      }
+    }
+  } catch {
+    // Git command failed, worktree not found
+  }
+
+  return null;
+}
 
 /**
  * Ensure the repository has at least one commit so git commands that rely on HEAD work.

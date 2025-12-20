@@ -5,8 +5,7 @@
 import type { Request, Response } from "express";
 import { exec } from "child_process";
 import { promisify } from "util";
-import path from "path";
-import { getErrorMessage, logError } from "../common.js";
+import { getErrorMessage, logError, resolveWorktreePath } from "../common.js";
 
 const execAsync = promisify(exec);
 
@@ -30,8 +29,13 @@ export function createMergeHandler() {
       }
 
       const branchName = `feature/${featureId}`;
-      // Git worktrees are stored in project directory
-      const worktreePath = path.join(projectPath, ".worktrees", featureId);
+
+      // Resolve the actual worktree path using the helper function
+      // This handles cases where:
+      // - projectPath is already the worktree
+      // - worktree is at projectPath/.worktrees/featureId
+      // - worktree directory name differs from featureId (sanitized branch names)
+      const worktreePath = await resolveWorktreePath(projectPath, featureId);
 
       // Get current branch
       const { stdout: currentBranch } = await execAsync(
@@ -58,14 +62,16 @@ export function createMergeHandler() {
         );
       }
 
-      // Clean up worktree and branch
-      try {
-        await execAsync(`git worktree remove "${worktreePath}" --force`, {
-          cwd: projectPath,
-        });
-        await execAsync(`git branch -D ${branchName}`, { cwd: projectPath });
-      } catch {
-        // Cleanup errors are non-fatal
+      // Clean up worktree and branch (only if worktree was found)
+      if (worktreePath) {
+        try {
+          await execAsync(`git worktree remove "${worktreePath}" --force`, {
+            cwd: projectPath,
+          });
+          await execAsync(`git branch -D ${branchName}`, { cwd: projectPath });
+        } catch {
+          // Cleanup errors are non-fatal
+        }
       }
 
       res.json({ success: true, mergedBranch: branchName });

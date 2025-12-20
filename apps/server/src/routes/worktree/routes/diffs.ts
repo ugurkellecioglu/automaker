@@ -3,9 +3,7 @@
  */
 
 import type { Request, Response } from "express";
-import path from "path";
-import fs from "fs/promises";
-import { getErrorMessage, logError } from "../common.js";
+import { getErrorMessage, logError, resolveWorktreePath } from "../common.js";
 import { getGitRepositoryDiffs } from "../../common.js";
 
 export function createDiffsHandler() {
@@ -26,37 +24,41 @@ export function createDiffsHandler() {
         return;
       }
 
-      // Git worktrees are stored in project directory
-      const worktreePath = path.join(projectPath, ".worktrees", featureId);
+      // Resolve the actual worktree path using the helper function
+      // This handles cases where:
+      // - projectPath is already the worktree
+      // - worktree is at projectPath/.worktrees/featureId
+      // - worktree directory name differs from featureId (sanitized branch names)
+      const worktreePath = await resolveWorktreePath(projectPath, featureId);
 
-      try {
-        // Check if worktree exists
-        await fs.access(worktreePath);
-
-        // Get diffs from worktree
-        const result = await getGitRepositoryDiffs(worktreePath);
-        res.json({
-          success: true,
-          diff: result.diff,
-          files: result.files,
-          hasChanges: result.hasChanges,
-        });
-      } catch (innerError) {
-        // Worktree doesn't exist - fallback to main project path
-        logError(innerError, "Worktree access failed, falling back to main project");
-
+      if (worktreePath) {
         try {
-          const result = await getGitRepositoryDiffs(projectPath);
+          // Get diffs from the resolved worktree path
+          const result = await getGitRepositoryDiffs(worktreePath);
           res.json({
             success: true,
             diff: result.diff,
             files: result.files,
             hasChanges: result.hasChanges,
           });
-        } catch (fallbackError) {
-          logError(fallbackError, "Fallback to main project also failed");
-          res.json({ success: true, diff: "", files: [], hasChanges: false });
+          return;
+        } catch (innerError) {
+          logError(innerError, "Failed to get diffs from worktree");
         }
+      }
+
+      // Worktree not found or failed - fallback to main project path
+      try {
+        const result = await getGitRepositoryDiffs(projectPath);
+        res.json({
+          success: true,
+          diff: result.diff,
+          files: result.files,
+          hasChanges: result.hasChanges,
+        });
+      } catch (fallbackError) {
+        logError(fallbackError, "Fallback to main project also failed");
+        res.json({ success: true, diff: "", files: [], hasChanges: false });
       }
     } catch (error) {
       logError(error, "Get worktree diffs failed");
