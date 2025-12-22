@@ -3,14 +3,11 @@
  */
 
 import type { Request, Response } from 'express';
+import type { GitHubRemoteStatus } from '@automaker/types';
 import { execAsync, execEnv, getErrorMessage, logError } from './common.js';
 
-export interface GitHubRemoteStatus {
-  hasGitHubRemote: boolean;
-  remoteUrl: string | null;
-  owner: string | null;
-  repo: string | null;
-}
+// Re-export type for convenience
+export type { GitHubRemoteStatus } from '@automaker/types';
 
 export async function checkGitHubRemote(projectPath: string): Promise<GitHubRemoteStatus> {
   const status: GitHubRemoteStatus = {

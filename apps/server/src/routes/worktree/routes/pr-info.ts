@@ -3,6 +3,7 @@
  */
 
 import type { Request, Response } from 'express';
+import type { PRComment, PRInfo } from '@automaker/types';
 import {
   getErrorMessage,
   logError,
@@ -12,26 +13,8 @@ import {
   isGhCliAvailable,
 } from '../common.js';
 
-export interface PRComment {
-  id: number;
-  author: string;
-  body: string;
-  path?: string;
-  line?: number;
-  createdAt: string;
-  isReviewComment: boolean;
-}
-
-export interface PRInfo {
-  number: number;
-  title: string;
-  url: string;
-  state: string;
-  author: string;
-  body: string;
-  comments: PRComment[];
-  reviewComments: PRComment[];
-}
+// Re-export types for convenience
+export type { PRComment, PRInfo } from '@automaker/types';
 
 export function createPRInfoHandler() {
   return async (req: Request, res: Response): Promise<void> => {

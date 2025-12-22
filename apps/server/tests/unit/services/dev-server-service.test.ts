@@ -10,10 +10,16 @@ vi.mock('child_process', () => ({
   execSync: vi.fn(),
 }));
 
-// Mock secure-fs
-vi.mock('@/lib/secure-fs.js', () => ({
-  access: vi.fn(),
-}));
+// Mock secure-fs from @automaker/platform
+vi.mock('@automaker/platform', async () => {
+  const actual = await vi.importActual('@automaker/platform');
+  return {
+    ...actual,
+    secureFs: {
+      access: vi.fn(),
+    },
+  };
+});
 
 // Mock net
 vi.mock('net', () => ({
@@ -24,7 +30,7 @@ vi.mock('net', () => ({
 }));
 
 import { spawn, execSync } from 'child_process';
-import * as secureFs from '@/lib/secure-fs.js';
+import { secureFs } from '@automaker/platform';
 import net from 'net';
 
 describe('dev-server-service.ts', () => {

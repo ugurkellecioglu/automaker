@@ -5,7 +5,7 @@
 import type { Request, Response } from 'express';
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import * as secureFs from '../../../lib/secure-fs.js';
+import { secureFs } from '@automaker/platform';
 import { join } from 'path';
 import { getErrorMessage, logError } from '../common.js';
 

@@ -3,10 +3,9 @@
  */
 
 import path from 'path';
-import * as secureFs from '../../lib/secure-fs.js';
 import type { EventEmitter } from '../../lib/events.js';
 import { createLogger } from '@automaker/utils';
-import { getFeaturesDir } from '@automaker/platform';
+import { getFeaturesDir, secureFs } from '@automaker/platform';
 
 const logger = createLogger('SpecRegeneration');
 

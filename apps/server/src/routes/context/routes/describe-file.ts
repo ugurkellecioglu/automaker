@@ -11,9 +11,8 @@
 
 import type { Request, Response } from 'express';
 import { createLogger } from '@automaker/utils';
-import { PathNotAllowedError } from '@automaker/platform';
+import { PathNotAllowedError, secureFs } from '@automaker/platform';
 import { ProviderFactory } from '../../../providers/provider-factory.js';
-import * as secureFs from '../../../lib/secure-fs.js';
 import * as path from 'path';
 
 const logger = createLogger('DescribeFile');

@@ -2,34 +2,16 @@
  * Common utilities for GitHub routes
  */
 
-import { exec } from 'child_process';
-import { promisify } from 'util';
+import { createLogger } from '@automaker/utils';
+import { createLogError, getErrorMessage } from '../../common.js';
+import { execAsync, execEnv } from '../../../lib/exec-utils.js';
 
-export const execAsync = promisify(exec);
+const logger = createLogger('GitHub');
 
-// Extended PATH to include common tool installation locations
-export const extendedPath = [
-  process.env.PATH,
-  '/opt/homebrew/bin',
-  '/usr/local/bin',
-  '/home/linuxbrew/.linuxbrew/bin',
-  `${process.env.HOME}/.local/bin`,
-]
-  .filter(Boolean)
-  .join(':');
+// Re-export exec utilities for convenience
+export { execAsync, execEnv } from '../../../lib/exec-utils.js';
 
-export const execEnv = {
-  ...process.env,
-  PATH: extendedPath,
-};
+// Re-export error utilities
+export { getErrorMessage } from '../../common.js';
 
-export function getErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return String(error);
-}
-
-export function logError(error: unknown, context: string): void {
-  console.error(`[GitHub] ${context}:`, error);
-}
+export const logError = createLogError(logger);

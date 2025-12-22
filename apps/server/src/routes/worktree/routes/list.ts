@@ -8,7 +8,7 @@
 import type { Request, Response } from 'express';
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import * as secureFs from '../../../lib/secure-fs.js';
+import { secureFs } from '@automaker/platform';
 import { isGitRepo } from '@automaker/git-utils';
 import { getErrorMessage, logError, normalizePath } from '../common.js';
 import { readAllWorktreeMetadata, type WorktreePRInfo } from '../../../lib/worktree-metadata.js';

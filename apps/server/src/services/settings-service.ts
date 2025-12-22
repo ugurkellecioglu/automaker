@@ -8,14 +8,13 @@
  */
 
 import { createLogger } from '@automaker/utils';
-import * as secureFs from '../lib/secure-fs.js';
-
 import {
   getGlobalSettingsPath,
   getCredentialsPath,
   getProjectSettingsPath,
   ensureDataDir,
   ensureAutomakerDir,
+  secureFs,
 } from '@automaker/platform';
 import type {
   GlobalSettings,

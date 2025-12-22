@@ -3,10 +3,9 @@
  */
 
 import type { Request, Response } from 'express';
-import * as secureFs from '../../../lib/secure-fs.js';
+import { secureFs, getBoardDir } from '@automaker/platform';
 import path from 'path';
 import { getErrorMessage, logError } from '../common.js';
-import { getBoardDir } from '@automaker/platform';
 
 export function createSaveBoardBackgroundHandler() {
   return async (req: Request, res: Response): Promise<void> => {

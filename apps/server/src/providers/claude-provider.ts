@@ -22,6 +22,7 @@ import type {
   SimpleQueryResult,
   StreamingQueryOptions,
   StreamingQueryResult,
+  PromptContentBlock,
 } from './types.js';
 
 export class ClaudeProvider extends BaseProvider {
@@ -335,7 +336,7 @@ export class ClaudeProvider extends BaseProvider {
   /**
    * Create a multi-part prompt generator for content blocks
    */
-  private createPromptGenerator(content: Array<{ type: string; text?: string; source?: object }>) {
+  private createPromptGenerator(content: PromptContentBlock[]) {
     // Return an async generator that yields SDK user messages
     // The SDK expects this format for multi-part prompts
     return (async function* () {

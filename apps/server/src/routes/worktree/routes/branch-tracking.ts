@@ -5,15 +5,12 @@
  * can switch between branches even after worktrees are removed.
  */
 
-import * as secureFs from '../../../lib/secure-fs.js';
+import { secureFs, getBranchTrackingPath, ensureAutomakerDir } from '@automaker/platform';
+import type { TrackedBranch } from '@automaker/types';
 import path from 'path';
-import { getBranchTrackingPath, ensureAutomakerDir } from '@automaker/platform';
 
-export interface TrackedBranch {
-  name: string;
-  createdAt: string;
-  lastActivatedAt?: string;
-}
+// Re-export type for convenience
+export type { TrackedBranch } from '@automaker/types';
 
 interface BranchTrackingData {
   branches: TrackedBranch[];

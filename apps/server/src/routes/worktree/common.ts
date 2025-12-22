@@ -3,15 +3,15 @@
  */
 
 import { createLogger } from '@automaker/utils';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-import path from 'path';
 import { getErrorMessage as getErrorMessageShared, createLogError } from '../common.js';
+import { execAsync, execEnv, isENOENT } from '../../lib/exec-utils.js';
 import { FeatureLoader } from '../../services/feature-loader.js';
 
 const logger = createLogger('Worktree');
-export const execAsync = promisify(exec);
 const featureLoader = new FeatureLoader();
+
+// Re-export exec utilities for convenience
+export { execAsync, execEnv, isENOENT } from '../../lib/exec-utils.js';
 
 // ============================================================================
 // Constants
@@ -19,48 +19,6 @@ const featureLoader = new FeatureLoader();
 
 /** Maximum allowed length for git branch names */
 export const MAX_BRANCH_NAME_LENGTH = 250;
-
-// ============================================================================
-// Extended PATH configuration for Electron apps
-// ============================================================================
-
-const pathSeparator = process.platform === 'win32' ? ';' : ':';
-const additionalPaths: string[] = [];
-
-if (process.platform === 'win32') {
-  // Windows paths
-  if (process.env.LOCALAPPDATA) {
-    additionalPaths.push(`${process.env.LOCALAPPDATA}\\Programs\\Git\\cmd`);
-  }
-  if (process.env.PROGRAMFILES) {
-    additionalPaths.push(`${process.env.PROGRAMFILES}\\Git\\cmd`);
-  }
-  if (process.env['ProgramFiles(x86)']) {
-    additionalPaths.push(`${process.env['ProgramFiles(x86)']}\\Git\\cmd`);
-  }
-} else {
-  // Unix/Mac paths
-  additionalPaths.push(
-    '/opt/homebrew/bin', // Homebrew on Apple Silicon
-    '/usr/local/bin', // Homebrew on Intel Mac, common Linux location
-    '/home/linuxbrew/.linuxbrew/bin', // Linuxbrew
-    `${process.env.HOME}/.local/bin` // pipx, other user installs
-  );
-}
-
-const extendedPath = [process.env.PATH, ...additionalPaths.filter(Boolean)]
-  .filter(Boolean)
-  .join(pathSeparator);
-
-/**
- * Environment variables with extended PATH for executing shell commands.
- * Electron apps don't inherit the user's shell PATH, so we need to add
- * common tool installation locations.
- */
-export const execEnv = {
-  ...process.env,
-  PATH: extendedPath,
-};
 
 // ============================================================================
 // Validation utilities
@@ -109,14 +67,6 @@ export async function isGitRepo(repoPath: string): Promise<boolean> {
   } catch {
     return false;
   }
-}
-
-/**
- * Check if an error is ENOENT (file/path not found or spawn failed)
- * These are expected in test environments with mock paths
- */
-export function isENOENT(error: unknown): boolean {
-  return error !== null && typeof error === 'object' && 'code' in error && error.code === 'ENOENT';
 }
 
 /**

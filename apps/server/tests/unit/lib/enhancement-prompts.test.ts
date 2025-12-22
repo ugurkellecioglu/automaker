@@ -15,7 +15,7 @@ import {
   SIMPLIFY_EXAMPLES,
   ACCEPTANCE_EXAMPLES,
   type EnhancementMode,
-} from '@/lib/enhancement-prompts.js';
+} from '@automaker/prompts';
 
 describe('enhancement-prompts.ts', () => {
   describe('System Prompt Constants', () => {

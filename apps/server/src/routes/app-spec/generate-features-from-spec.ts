@@ -4,12 +4,11 @@
  * Uses ClaudeProvider.executeStreamingQuery() for SDK interaction.
  */
 
-import * as secureFs from '../../lib/secure-fs.js';
 import type { EventEmitter } from '../../lib/events.js';
 import { createLogger } from '@automaker/utils';
 import { ProviderFactory } from '../../providers/provider-factory.js';
 import { parseAndCreateFeatures } from './parse-and-create-features.js';
-import { getAppSpecPath } from '@automaker/platform';
+import { getAppSpecPath, secureFs } from '@automaker/platform';
 
 const logger = createLogger('SpecRegeneration');
 

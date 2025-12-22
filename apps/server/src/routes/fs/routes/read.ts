@@ -3,9 +3,8 @@
  */
 
 import type { Request, Response } from 'express';
-import * as secureFs from '../../../lib/secure-fs.js';
-import { PathNotAllowedError } from '@automaker/platform';
-import { getErrorMessage, logError } from '../common.js';
+import { secureFs, PathNotAllowedError } from '@automaker/platform';
+import { getErrorMessage, logError, isENOENT } from '../common.js';
 
 // Optional files that are expected to not exist in new projects
 // Don't log ENOENT errors for these to reduce noise
@@ -13,10 +12,6 @@ const OPTIONAL_FILES = ['categories.json', 'app_spec.txt'];
 
 function isOptionalFile(filePath: string): boolean {
   return OPTIONAL_FILES.some((optionalFile) => filePath.endsWith(optionalFile));
-}
-
-function isENOENT(error: unknown): boolean {
-  return error !== null && typeof error === 'object' && 'code' in error && error.code === 'ENOENT';
 }
 
 export function createReadHandler() {

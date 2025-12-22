@@ -3,8 +3,7 @@
  */
 
 import type { Request, Response } from 'express';
-import * as secureFs from '../../../lib/secure-fs.js';
-import { PathNotAllowedError } from '@automaker/platform';
+import { secureFs, PathNotAllowedError } from '@automaker/platform';
 import { getErrorMessage, logError } from '../common.js';
 
 export function createReaddirHandler() {

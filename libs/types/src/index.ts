@@ -93,3 +93,28 @@ export type {
   TaskProgressPayload,
   PlanApprovalPayload,
 } from './planning.js';
+
+// GitHub types
+export type {
+  GitHubLabel,
+  GitHubAuthor,
+  GitHubIssue,
+  GitHubPR,
+  GitHubRemoteStatus,
+  ListPRsResult,
+  ListIssuesResult,
+} from './github.js';
+
+// Worktree types
+export type {
+  WorktreePRInfo,
+  WorktreeMetadata,
+  WorktreeListItem,
+  PRComment,
+  PRInfo,
+  DevServerInfo,
+  TrackedBranch,
+} from './worktree.js';
+
+// Claude usage types
+export type { ClaudeUsage, ClaudeStatus } from './claude.js';

@@ -13,7 +13,7 @@ import {
   buildUserPrompt,
   isValidEnhancementMode,
   type EnhancementMode,
-} from '../../../lib/enhancement-prompts.js';
+} from '@automaker/prompts';
 
 const logger = createLogger('EnhancePrompt');
 

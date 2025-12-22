@@ -18,14 +18,13 @@ export {
   getGitRepositoryDiffs,
 } from '@automaker/git-utils';
 
-type Logger = ReturnType<typeof createLogger>;
+// Re-export error utilities from shared package
+export { getErrorMessage } from '@automaker/utils';
 
-/**
- * Get error message from error object
- */
-export function getErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'Unknown error';
-}
+// Re-export exec utilities
+export { execAsync, execEnv, isENOENT } from '../lib/exec-utils.js';
+
+type Logger = ReturnType<typeof createLogger>;
 
 /**
  * Create a logError function for a specific logger

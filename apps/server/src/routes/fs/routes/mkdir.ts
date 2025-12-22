@@ -4,9 +4,8 @@
  */
 
 import type { Request, Response } from 'express';
-import * as secureFs from '../../../lib/secure-fs.js';
+import { secureFs, PathNotAllowedError } from '@automaker/platform';
 import path from 'path';
-import { PathNotAllowedError } from '@automaker/platform';
 import { getErrorMessage, logError } from '../common.js';
 
 export function createMkdirHandler() {

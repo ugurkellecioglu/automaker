@@ -9,8 +9,7 @@ import type { ExecuteOptions, ParsedTask } from '@automaker/types';
 import type { EventEmitter } from '../../lib/events.js';
 import type { BaseProvider } from '../../providers/base-provider.js';
 import { buildTaskPrompt } from '@automaker/prompts';
-import { createLogger } from '@automaker/utils';
-import { processStream } from '../../lib/stream-processor.js';
+import { createLogger, processStream } from '@automaker/utils';
 import type { TaskExecutionContext, TaskProgress } from './types.js';
 
 const logger = createLogger('TaskExecutor');

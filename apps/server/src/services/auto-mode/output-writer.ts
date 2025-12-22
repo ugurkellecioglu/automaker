@@ -5,7 +5,7 @@
  * Used to persist agent output to agent-output.md in the feature directory.
  */
 
-import * as secureFs from '../../lib/secure-fs.js';
+import { secureFs } from '@automaker/platform';
 import path from 'path';
 import { createLogger } from '@automaker/utils';
 

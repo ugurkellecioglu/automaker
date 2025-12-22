@@ -20,9 +20,11 @@ import {
   loadContextFiles,
   createLogger,
   sleep,
+  processStream,
+  extractBeforeMarker,
 } from '@automaker/utils';
+import { secureFs, getFeatureDir } from '@automaker/platform';
 import { resolveModelString, DEFAULT_MODELS } from '@automaker/model-resolver';
-import { getFeatureDir } from '@automaker/platform';
 import {
   getPlanningPromptPrefix,
   parseTasksFromSpec,
@@ -31,10 +33,8 @@ import {
   buildContinuationPrompt,
 } from '@automaker/prompts';
 import path from 'path';
-import * as secureFs from '../lib/secure-fs.js';
 import type { EventEmitter } from '../lib/events.js';
 import { createAutoModeOptions, validateWorkingDirectory } from '../lib/sdk-options.js';
-import { processStream, extractBeforeMarker } from '../lib/stream-processor.js';
 import { FeatureLoader } from './feature-loader.js';
 
 import {

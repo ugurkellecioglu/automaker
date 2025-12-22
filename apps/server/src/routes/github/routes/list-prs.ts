@@ -3,39 +3,12 @@
  */
 
 import type { Request, Response } from 'express';
+import type { GitHubPR, ListPRsResult } from '@automaker/types';
 import { execAsync, execEnv, getErrorMessage, logError } from './common.js';
 import { checkGitHubRemote } from './check-github-remote.js';
 
-export interface GitHubLabel {
-  name: string;
-  color: string;
-}
-
-export interface GitHubAuthor {
-  login: string;
-}
-
-export interface GitHubPR {
-  number: number;
-  title: string;
-  state: string;
-  author: GitHubAuthor;
-  createdAt: string;
-  labels: GitHubLabel[];
-  url: string;
-  isDraft: boolean;
-  headRefName: string;
-  reviewDecision: string | null;
-  mergeable: string;
-  body: string;
-}
-
-export interface ListPRsResult {
-  success: boolean;
-  openPRs?: GitHubPR[];
-  mergedPRs?: GitHubPR[];
-  error?: string;
-}
+// Re-export types for convenience
+export type { GitHubLabel, GitHubAuthor, GitHubPR, ListPRsResult } from '@automaker/types';
 
 export function createListPRsHandler() {
   return async (req: Request, res: Response): Promise<void> => {

@@ -3,35 +3,12 @@
  */
 
 import type { Request, Response } from 'express';
+import type { GitHubIssue, ListIssuesResult } from '@automaker/types';
 import { execAsync, execEnv, getErrorMessage, logError } from './common.js';
 import { checkGitHubRemote } from './check-github-remote.js';
 
-export interface GitHubLabel {
-  name: string;
-  color: string;
-}
-
-export interface GitHubAuthor {
-  login: string;
-}
-
-export interface GitHubIssue {
-  number: number;
-  title: string;
-  state: string;
-  author: GitHubAuthor;
-  createdAt: string;
-  labels: GitHubLabel[];
-  url: string;
-  body: string;
-}
-
-export interface ListIssuesResult {
-  success: boolean;
-  openIssues?: GitHubIssue[];
-  closedIssues?: GitHubIssue[];
-  error?: string;
-}
+// Re-export types for convenience
+export type { GitHubLabel, GitHubAuthor, GitHubIssue, ListIssuesResult } from '@automaker/types';
 
 export function createListIssuesHandler() {
   return async (req: Request, res: Response): Promise<void> => {

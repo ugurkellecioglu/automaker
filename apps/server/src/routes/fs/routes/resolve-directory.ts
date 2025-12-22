@@ -3,7 +3,7 @@
  */
 
 import type { Request, Response } from 'express';
-import * as secureFs from '../../../lib/secure-fs.js';
+import { secureFs } from '@automaker/platform';
 import path from 'path';
 import { getErrorMessage, logError } from '../common.js';
 

@@ -6,13 +6,11 @@
  */
 
 import type { ExecuteOptions } from '@automaker/types';
-import { createLogger, classifyError } from '@automaker/utils';
+import { createLogger, classifyError, processStream } from '@automaker/utils';
 import { resolveModelString, DEFAULT_MODELS } from '@automaker/model-resolver';
-import { getAutomakerDir } from '@automaker/platform';
+import { getAutomakerDir, secureFs } from '@automaker/platform';
 import { ProviderFactory } from '../../providers/provider-factory.js';
 import { validateWorkingDirectory } from '../../lib/sdk-options.js';
-import { processStream } from '../../lib/stream-processor.js';
-import * as secureFs from '../../lib/secure-fs.js';
 import path from 'path';
 import type { EventEmitter } from '../../lib/events.js';
 

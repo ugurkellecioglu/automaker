@@ -7,12 +7,12 @@ import path from 'path';
 import type { Feature, PlanSpec, FeatureStatus } from '@automaker/types';
 import { createLogger } from '@automaker/utils';
 import { resolveDependencies, areDependenciesSatisfied } from '@automaker/dependency-resolver';
-import * as secureFs from '../lib/secure-fs.js';
 import {
   getFeaturesDir,
   getFeatureDir,
   getFeatureImagesDir,
   ensureAutomakerDir,
+  secureFs,
 } from '@automaker/platform';
 
 const logger = createLogger('FeatureLoader');

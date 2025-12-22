@@ -4,7 +4,6 @@
  */
 
 import path from 'path';
-import * as secureFs from '../lib/secure-fs.js';
 import type { EventEmitter } from '../lib/events.js';
 import type { ExecuteOptions } from '@automaker/types';
 import {
@@ -15,7 +14,7 @@ import {
 } from '@automaker/utils';
 import { ProviderFactory } from '../providers/provider-factory.js';
 import { createChatOptions, validateWorkingDirectory } from '../lib/sdk-options.js';
-import { PathNotAllowedError } from '@automaker/platform';
+import { PathNotAllowedError, secureFs } from '@automaker/platform';
 
 interface Message {
   id: string;

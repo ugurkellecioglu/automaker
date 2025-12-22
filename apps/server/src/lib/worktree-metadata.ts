@@ -3,25 +3,15 @@
  * Stores worktree-specific data in .automaker/worktrees/:branch/worktree.json
  */
 
-import * as secureFs from './secure-fs.js';
+import { secureFs } from '@automaker/platform';
 import * as path from 'path';
+import type { WorktreePRInfo, WorktreeMetadata } from '@automaker/types';
+
+// Re-export types for convenience
+export type { WorktreePRInfo, WorktreeMetadata } from '@automaker/types';
 
 /** Maximum length for sanitized branch names in filesystem paths */
 const MAX_SANITIZED_BRANCH_PATH_LENGTH = 200;
-
-export interface WorktreePRInfo {
-  number: number;
-  url: string;
-  title: string;
-  state: string;
-  createdAt: string;
-}
-
-export interface WorktreeMetadata {
-  branch: string;
-  createdAt: string;
-  pr?: WorktreePRInfo;
-}
 
 /**
  * Sanitize branch name for cross-platform filesystem safety

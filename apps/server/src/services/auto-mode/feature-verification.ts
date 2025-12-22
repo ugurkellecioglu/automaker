@@ -13,8 +13,7 @@ import {
   shortHash,
 } from '@automaker/git-utils';
 import { extractTitleFromDescription } from '@automaker/prompts';
-import { getFeatureDir } from '@automaker/platform';
-import * as secureFs from '../../lib/secure-fs.js';
+import { getFeatureDir, secureFs } from '@automaker/platform';
 import path from 'path';
 import type { EventEmitter } from '../../lib/events.js';
 import type { Feature } from '@automaker/types';

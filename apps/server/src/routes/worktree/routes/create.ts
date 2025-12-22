@@ -11,7 +11,7 @@ import type { Request, Response } from 'express';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import path from 'path';
-import * as secureFs from '../../../lib/secure-fs.js';
+import { secureFs } from '@automaker/platform';
 import {
   isGitRepo,
   getErrorMessage,
