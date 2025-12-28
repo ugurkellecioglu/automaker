@@ -6,6 +6,7 @@ export type CursorModelId =
   | 'auto' // Auto-select best model
   | 'claude-sonnet-4' // Claude Sonnet 4
   | 'claude-sonnet-4-thinking' // Claude Sonnet 4 with extended thinking
+  | 'composer-1' // Cursor Composer agent model
   | 'gpt-4o' // GPT-4o
   | 'gpt-4o-mini' // GPT-4o Mini
   | 'gemini-2.5-pro' // Gemini 2.5 Pro
@@ -45,6 +46,13 @@ export const CURSOR_MODEL_MAP: Record<CursorModelId, CursorModelConfig> = {
     label: 'Claude Sonnet 4 (Thinking)',
     description: 'Claude Sonnet 4 with extended thinking enabled',
     hasThinking: true,
+    tier: 'pro',
+  },
+  'composer-1': {
+    id: 'composer-1',
+    label: 'Composer 1',
+    description: 'Cursor Composer agent model optimized for multi-file edits',
+    hasThinking: false,
     tier: 'pro',
   },
   'gpt-4o': {
