@@ -18,7 +18,7 @@
  */
 
 import { useEffect, useState, useRef } from 'react';
-import { getHttpApiClient } from '@/lib/http-api-client';
+import { getHttpApiClient, waitForApiKeyInit } from '@/lib/http-api-client';
 import { isElectron } from '@/lib/electron';
 import { getItem, removeItem } from '@/lib/storage';
 import { useAppStore } from '@/store/app-store';
@@ -99,6 +99,10 @@ export function useSettingsMigration(): MigrationState {
       }
 
       try {
+        // Wait for API key to be initialized before making any API calls
+        // This prevents 401 errors on startup in Electron mode
+        await waitForApiKeyInit();
+
         const api = getHttpApiClient();
 
         // Check if server has settings files

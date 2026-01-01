@@ -44,6 +44,7 @@ const getServerUrl = (): string => {
 // Cached API key for authentication (Electron mode only)
 let cachedApiKey: string | null = null;
 let apiKeyInitialized = false;
+let apiKeyInitPromise: Promise<void> | null = null;
 
 // Cached session token for authentication (Web mode - explicit header auth)
 let cachedSessionToken: string | null = null;
@@ -51,6 +52,17 @@ let cachedSessionToken: string | null = null;
 // Get API key for Electron mode (returns cached value after initialization)
 // Exported for use in WebSocket connections that need auth
 export const getApiKey = (): string | null => cachedApiKey;
+
+/**
+ * Wait for API key initialization to complete.
+ * Returns immediately if already initialized.
+ */
+export const waitForApiKeyInit = (): Promise<void> => {
+  if (apiKeyInitialized) return Promise.resolve();
+  if (apiKeyInitPromise) return apiKeyInitPromise;
+  // If not started yet, start it now
+  return initApiKey();
+};
 
 // Get session token for Web mode (returns cached value after login or token fetch)
 export const getSessionToken = (): string | null => cachedSessionToken;
@@ -79,24 +91,37 @@ export const isElectronMode = (): boolean => {
  * This should be called early in app initialization.
  */
 export const initApiKey = async (): Promise<void> => {
+  // Return existing promise if already in progress
+  if (apiKeyInitPromise) return apiKeyInitPromise;
+
+  // Return immediately if already initialized
   if (apiKeyInitialized) return;
-  apiKeyInitialized = true;
 
-  // Only Electron mode uses API key header auth
-  if (typeof window !== 'undefined' && window.electronAPI?.getApiKey) {
+  // Create and store the promise so concurrent calls wait for the same initialization
+  apiKeyInitPromise = (async () => {
     try {
-      cachedApiKey = await window.electronAPI.getApiKey();
-      if (cachedApiKey) {
-        console.log('[HTTP Client] Using API key from Electron');
-        return;
+      // Only Electron mode uses API key header auth
+      if (typeof window !== 'undefined' && window.electronAPI?.getApiKey) {
+        try {
+          cachedApiKey = await window.electronAPI.getApiKey();
+          if (cachedApiKey) {
+            console.log('[HTTP Client] Using API key from Electron');
+            return;
+          }
+        } catch (error) {
+          console.warn('[HTTP Client] Failed to get API key from Electron:', error);
+        }
       }
-    } catch (error) {
-      console.warn('[HTTP Client] Failed to get API key from Electron:', error);
-    }
-  }
 
-  // In web mode, authentication is handled via HTTP-only cookies
-  console.log('[HTTP Client] Web mode - using cookie-based authentication');
+      // In web mode, authentication is handled via HTTP-only cookies
+      console.log('[HTTP Client] Web mode - using cookie-based authentication');
+    } finally {
+      // Mark as initialized after completion, regardless of success or failure
+      apiKeyInitialized = true;
+    }
+  })();
+
+  return apiKeyInitPromise;
 };
 
 /**
@@ -296,7 +321,17 @@ export class HttpApiClient implements ElectronAPI {
 
   constructor() {
     this.serverUrl = getServerUrl();
-    this.connectWebSocket();
+    // Wait for API key initialization before connecting WebSocket
+    // This prevents 401 errors on startup in Electron mode
+    waitForApiKeyInit()
+      .then(() => {
+        this.connectWebSocket();
+      })
+      .catch((error) => {
+        console.error('[HttpApiClient] API key initialization failed:', error);
+        // Still attempt WebSocket connection - it may work with cookie auth
+        this.connectWebSocket();
+      });
   }
 
   /**
@@ -460,6 +495,8 @@ export class HttpApiClient implements ElectronAPI {
   }
 
   private async post<T>(endpoint: string, body?: unknown): Promise<T> {
+    // Ensure API key is initialized before making request
+    await waitForApiKeyInit();
     const response = await fetch(`${this.serverUrl}${endpoint}`, {
       method: 'POST',
       headers: this.getHeaders(),
@@ -470,6 +507,8 @@ export class HttpApiClient implements ElectronAPI {
   }
 
   private async get<T>(endpoint: string): Promise<T> {
+    // Ensure API key is initialized before making request
+    await waitForApiKeyInit();
     const response = await fetch(`${this.serverUrl}${endpoint}`, {
       headers: this.getHeaders(),
       credentials: 'include', // Include cookies for session auth
@@ -478,6 +517,8 @@ export class HttpApiClient implements ElectronAPI {
   }
 
   private async put<T>(endpoint: string, body?: unknown): Promise<T> {
+    // Ensure API key is initialized before making request
+    await waitForApiKeyInit();
     const response = await fetch(`${this.serverUrl}${endpoint}`, {
       method: 'PUT',
       headers: this.getHeaders(),
@@ -488,6 +529,8 @@ export class HttpApiClient implements ElectronAPI {
   }
 
   private async httpDelete<T>(endpoint: string): Promise<T> {
+    // Ensure API key is initialized before making request
+    await waitForApiKeyInit();
     const response = await fetch(`${this.serverUrl}${endpoint}`, {
       method: 'DELETE',
       headers: this.getHeaders(),
