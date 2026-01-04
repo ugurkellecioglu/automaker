@@ -665,6 +665,53 @@ function mergeConsecutiveEntries(entries: LogEntry[]): LogEntry[] {
 }
 
 /**
+ * Extracts summary content from raw log output
+ * Returns the summary text if found, or null if no summary exists
+ */
+export function extractSummary(rawOutput: string): string | null {
+  if (!rawOutput || !rawOutput.trim()) {
+    return null;
+  }
+
+  // Try to find <summary> tags first (preferred format)
+  const summaryTagMatch = rawOutput.match(/<summary>([\s\S]*?)<\/summary>/);
+  if (summaryTagMatch) {
+    return summaryTagMatch[1].trim();
+  }
+
+  // Try to find markdown ## Summary section
+  const summaryHeaderMatch = rawOutput.match(/^##\s+Summary\s*\n([\s\S]*?)(?=\n##\s+|$)/m);
+  if (summaryHeaderMatch) {
+    return summaryHeaderMatch[1].trim();
+  }
+
+  // Try other summary formats (Feature, Changes, Implementation)
+  const otherHeaderMatch = rawOutput.match(
+    /^##\s+(Feature|Changes|Implementation)\s*\n([\s\S]*?)(?=\n##\s+|$)/m
+  );
+  if (otherHeaderMatch) {
+    return `## ${otherHeaderMatch[1]}\n${otherHeaderMatch[2].trim()}`;
+  }
+
+  // Try to find summary introduction lines
+  const introMatch = rawOutput.match(
+    /(^|\n)(All tasks completed[\s\S]*?)(?=\n🔧|\n📋|\n⚡|\n❌|$)/
+  );
+  if (introMatch) {
+    return introMatch[2].trim();
+  }
+
+  const completionMatch = rawOutput.match(
+    /(^|\n)((I've|I have) (successfully |now )?(completed|finished|implemented)[\s\S]*?)(?=\n🔧|\n📋|\n⚡|\n❌|$)/
+  );
+  if (completionMatch) {
+    return completionMatch[2].trim();
+  }
+
+  return null;
+}
+
+/**
  * Gets the color classes for a log entry type
  */
 export function getLogTypeColors(type: LogEntryType): {

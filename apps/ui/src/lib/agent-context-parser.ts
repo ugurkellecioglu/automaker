@@ -40,54 +40,117 @@ export function formatModelName(model: string): string {
 }
 
 /**
+ * Helper to extract a balanced JSON object from a string starting at a given position
+ */
+function extractJsonObject(str: string, startIdx: number): string | null {
+  if (str[startIdx] !== '{') return null;
+
+  let depth = 0;
+  let inString = false;
+  let escapeNext = false;
+
+  for (let i = startIdx; i < str.length; i++) {
+    const char = str[i];
+
+    if (escapeNext) {
+      escapeNext = false;
+      continue;
+    }
+
+    if (char === '\\' && inString) {
+      escapeNext = true;
+      continue;
+    }
+
+    if (char === '"' && !escapeNext) {
+      inString = !inString;
+      continue;
+    }
+
+    if (inString) continue;
+
+    if (char === '{') depth++;
+    else if (char === '}') {
+      depth--;
+      if (depth === 0) {
+        return str.slice(startIdx, i + 1);
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
  * Extracts todos from the context content
  * Looks for TodoWrite tool calls in the format:
- * TodoWrite: [{"content": "...", "status": "..."}]
+ * 🔧 Tool: TodoWrite
+ * Input: {"todos": [{"content": "...", "status": "..."}]}
  */
 function extractTodos(content: string): AgentTaskInfo['todos'] {
   const todos: AgentTaskInfo['todos'] = [];
 
-  // Look for TodoWrite tool inputs
-  const todoMatches = content.matchAll(
-    /TodoWrite.*?(?:"todos"\s*:\s*)?(\[[\s\S]*?\](?=\s*(?:\}|$|🔧|📋|⚡|✅|❌)))/g
-  );
+  // Find all occurrences of TodoWrite tool calls
+  const todoWriteMarker = '🔧 Tool: TodoWrite';
+  let searchStart = 0;
 
-  for (const match of todoMatches) {
-    try {
-      // Try to find JSON array in the match
-      const jsonStr = match[1] || match[0];
-      const arrayMatch = jsonStr.match(/\[[\s\S]*?\]/);
-      if (arrayMatch) {
-        const parsed = JSON.parse(arrayMatch[0]);
-        if (Array.isArray(parsed)) {
-          for (const item of parsed) {
+  while (true) {
+    const markerIdx = content.indexOf(todoWriteMarker, searchStart);
+    if (markerIdx === -1) break;
+
+    // Look for "Input:" after the marker
+    const inputIdx = content.indexOf('Input:', markerIdx);
+    if (inputIdx === -1 || inputIdx > markerIdx + 100) {
+      searchStart = markerIdx + 1;
+      continue;
+    }
+
+    // Find the start of the JSON object
+    const jsonStart = content.indexOf('{', inputIdx);
+    if (jsonStart === -1) {
+      searchStart = markerIdx + 1;
+      continue;
+    }
+
+    // Extract the complete JSON object
+    const jsonStr = extractJsonObject(content, jsonStart);
+    if (jsonStr) {
+      try {
+        const parsed = JSON.parse(jsonStr) as {
+          todos?: Array<{ content: string; status: string }>;
+        };
+        if (parsed.todos && Array.isArray(parsed.todos)) {
+          // Clear previous todos - we want the latest state
+          todos.length = 0;
+          for (const item of parsed.todos) {
             if (item.content && item.status) {
-              // Check if this todo already exists (avoid duplicates)
-              if (!todos.some((t) => t.content === item.content)) {
-                todos.push({
-                  content: item.content,
-                  status: item.status,
-                });
-              }
+              todos.push({
+                content: item.content,
+                status: item.status as 'pending' | 'in_progress' | 'completed',
+              });
             }
           }
         }
+      } catch {
+        // Ignore parse errors
       }
-    } catch {
-      // Ignore parse errors
     }
+
+    searchStart = markerIdx + 1;
   }
 
-  // Also try to extract from markdown task lists
-  const markdownTodos = content.matchAll(/- \[([ xX])\] (.+)/g);
-  for (const match of markdownTodos) {
-    const isCompleted = match[1].toLowerCase() === 'x';
-    const content = match[2].trim();
-    if (!todos.some((t) => t.content === content)) {
-      todos.push({
-        content,
-        status: isCompleted ? 'completed' : 'pending',
-      });
+  // Also try to extract from markdown task lists as fallback
+  if (todos.length === 0) {
+    const markdownTodos = content.matchAll(/- \[([ xX])\] (.+)/g);
+    for (const match of markdownTodos) {
+      const isCompleted = match[1].toLowerCase() === 'x';
+      const todoContent = match[2].trim();
+      if (!todos.some((t) => t.content === todoContent)) {
+        todos.push({
+          content: todoContent,
+          status: isCompleted ? 'completed' : 'pending',
+        });
+      }
     }
   }
 
