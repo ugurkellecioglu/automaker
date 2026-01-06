@@ -4,8 +4,11 @@ import type { Project, TrashedProject } from '@/lib/electron';
 import type {
   Feature as BaseFeature,
   FeatureImagePath,
+  FeatureTextFilePath,
   ModelAlias,
   PlanningMode,
+  ThinkingLevel,
+  ModelProvider,
   AIProfile,
   CursorModelId,
   PhaseModelConfig,
@@ -20,7 +23,15 @@ import type {
 import { getAllCursorModelIds, DEFAULT_PHASE_MODELS } from '@automaker/types';
 
 // Re-export types for convenience
-export type { ThemeMode, ModelAlias };
+export type {
+  ModelAlias,
+  PlanningMode,
+  ThinkingLevel,
+  ModelProvider,
+  AIProfile,
+  FeatureTextFilePath,
+  FeatureImagePath,
+};
 
 export type ViewMode =
   | 'welcome'
@@ -567,6 +578,10 @@ export interface AppState {
   claudeUsage: ClaudeUsage | null;
   claudeUsageLastUpdated: number | null;
 
+  // Codex Usage Tracking
+  codexUsage: CodexUsage | null;
+  codexUsageLastUpdated: number | null;
+
   // Pipeline Configuration (per-project, keyed by project path)
   pipelineConfigByProject: Record<string, PipelineConfig>;
 }
@@ -599,6 +614,41 @@ export type ClaudeUsage = {
 
 // Response type for Claude usage API (can be success or error)
 export type ClaudeUsageResponse = ClaudeUsage | { error: string; message?: string };
+
+// Codex Usage types
+export type CodexPlanType =
+  | 'free'
+  | 'plus'
+  | 'pro'
+  | 'team'
+  | 'business'
+  | 'enterprise'
+  | 'edu'
+  | 'unknown';
+
+export interface CodexCreditsSnapshot {
+  balance?: string;
+  unlimited?: boolean;
+  hasCredits?: boolean;
+}
+
+export interface CodexRateLimitWindow {
+  limit: number;
+  used: number;
+  remaining: number;
+  window: number; // Duration in minutes
+  resetsAt: number; // Unix timestamp in seconds
+}
+
+export interface CodexUsage {
+  planType: CodexPlanType | null;
+  credits: CodexCreditsSnapshot | null;
+  rateLimits: {
+    session?: CodexRateLimitWindow;
+    weekly?: CodexRateLimitWindow;
+  } | null;
+  lastUpdated: string;
+}
 
 /**
  * Check if Claude usage is at its limit (any of: session >= 100%, weekly >= 100%, OR cost >= limit)
@@ -928,6 +978,14 @@ export interface AppActions {
   deletePipelineStep: (projectPath: string, stepId: string) => void;
   reorderPipelineSteps: (projectPath: string, stepIds: string[]) => void;
 
+  // Claude Usage Tracking actions
+  setClaudeRefreshInterval: (interval: number) => void;
+  setClaudeUsageLastUpdated: (timestamp: number) => void;
+  setClaudeUsage: (usage: ClaudeUsage | null) => void;
+
+  // Codex Usage Tracking actions
+  setCodexUsage: (usage: CodexUsage | null) => void;
+
   // Reset
   reset: () => void;
 }
@@ -1053,6 +1111,8 @@ const initialState: AppState = {
   claudeRefreshInterval: 60,
   claudeUsage: null,
   claudeUsageLastUpdated: null,
+  codexUsage: null,
+  codexUsageLastUpdated: null,
   pipelineConfigByProject: {},
 };
 
@@ -2772,6 +2832,13 @@ export const useAppStore = create<AppState & AppActions>()(
         set({
           claudeUsage: usage,
           claudeUsageLastUpdated: usage ? Date.now() : null,
+        }),
+
+      // Codex Usage Tracking actions
+      setCodexUsage: (usage: CodexUsage | null) =>
+        set({
+          codexUsage: usage,
+          codexUsageLastUpdated: usage ? Date.now() : null,
         }),
 
       // Pipeline actions

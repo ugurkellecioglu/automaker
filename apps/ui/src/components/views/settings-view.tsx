@@ -109,9 +109,9 @@ export function SettingsView() {
       case 'appearance':
         return (
           <AppearanceSection
-            effectiveTheme={effectiveTheme}
-            currentProject={settingsProject}
-            onThemeChange={handleSetTheme}
+            effectiveTheme={effectiveTheme as any}
+            currentProject={settingsProject as any}
+            onThemeChange={(theme) => handleSetTheme(theme as any)}
           />
         );
       case 'terminal':

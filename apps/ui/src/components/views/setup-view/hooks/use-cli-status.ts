@@ -55,14 +55,16 @@ export function useCliStatus({
         setCliStatus(cliStatus);
 
         if (result.auth) {
-          // Validate method is one of the expected values, default to "none"
-          const validMethods = VALID_AUTH_METHODS[cliType] ?? ['none'] as const;
-          type AuthMethod = (typeof validMethods)[number];
-          const method: AuthMethod = validMethods.includes(result.auth.method as AuthMethod)
-            ? (result.auth.method as AuthMethod)
-            : 'none';
-
           if (cliType === 'claude') {
+            // Validate method is one of the expected Claude values, default to "none"
+            const validMethods = VALID_AUTH_METHODS.claude;
+            type ClaudeAuthMethod = (typeof validMethods)[number];
+            const method: ClaudeAuthMethod = validMethods.includes(
+              result.auth.method as ClaudeAuthMethod
+            )
+              ? (result.auth.method as ClaudeAuthMethod)
+              : 'none';
+
             setAuthStatus({
               authenticated: result.auth.authenticated,
               method,
@@ -73,6 +75,15 @@ export function useCliStatus({
               hasEnvApiKey: result.auth.hasEnvApiKey,
             });
           } else {
+            // Validate method is one of the expected Codex values, default to "none"
+            const validMethods = VALID_AUTH_METHODS.codex;
+            type CodexAuthMethod = (typeof validMethods)[number];
+            const method: CodexAuthMethod = validMethods.includes(
+              result.auth.method as CodexAuthMethod
+            )
+              ? (result.auth.method as CodexAuthMethod)
+              : 'none';
+
             setAuthStatus({
               authenticated: result.auth.authenticated,
               method,

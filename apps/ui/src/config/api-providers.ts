@@ -1,7 +1,7 @@
 import type { Dispatch, SetStateAction } from 'react';
 import type { ApiKeys } from '@/store/app-store';
 
-export type ProviderKey = 'anthropic' | 'google';
+export type ProviderKey = 'anthropic' | 'google' | 'openai';
 
 export interface ProviderConfig {
   key: ProviderKey;

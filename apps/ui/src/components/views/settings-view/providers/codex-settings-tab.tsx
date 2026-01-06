@@ -7,22 +7,44 @@ import { CodexUsageSection } from '../codex/codex-usage-section';
 import { Info } from 'lucide-react';
 import { getElectronAPI } from '@/lib/electron';
 import { createLogger } from '@automaker/utils/logger';
+import type { CliStatus as SharedCliStatus } from '../shared/types';
 
 const logger = createLogger('CodexSettings');
 
 export function CodexSettingsTab() {
+  // TODO: Add these to app-store
+  const [codexAutoLoadAgents, setCodexAutoLoadAgents] = useState(false);
+  const [codexSandboxMode, setCodexSandboxMode] = useState<
+    'read-only' | 'workspace-write' | 'danger-full-access'
+  >('read-only');
+  const [codexApprovalPolicy, setCodexApprovalPolicy] = useState<
+    'untrusted' | 'on-failure' | 'on-request' | 'never'
+  >('untrusted');
+  const [codexEnableWebSearch, setCodexEnableWebSearch] = useState(false);
+  const [codexEnableImages, setCodexEnableImages] = useState(false);
+
   const {
-    codexAutoLoadAgents,
-    setCodexAutoLoadAgents,
-    codexSandboxMode,
-    setCodexSandboxMode,
-    codexApprovalPolicy,
-    setCodexApprovalPolicy,
-  } = useAppStore();
-  const { codexAuthStatus, codexCliStatus, setCodexCliStatus, setCodexAuthStatus } =
-    useSetupStore();
+    codexAuthStatus,
+    codexCliStatus: setupCliStatus,
+    setCodexCliStatus,
+    setCodexAuthStatus,
+  } = useSetupStore();
 
   const [isCheckingCodexCli, setIsCheckingCodexCli] = useState(false);
+  const [displayCliStatus, setDisplayCliStatus] = useState<SharedCliStatus | null>(null);
+
+  // Convert setup-store CliStatus to shared/types CliStatus for display
+  const codexCliStatus: SharedCliStatus | null =
+    displayCliStatus ||
+    (setupCliStatus
+      ? {
+          success: true,
+          status: setupCliStatus.installed ? 'installed' : 'not_installed',
+          method: setupCliStatus.method,
+          version: setupCliStatus.version || undefined,
+          path: setupCliStatus.path || undefined,
+        }
+      : null);
 
   const handleRefreshCodexCli = useCallback(async () => {
     setIsCheckingCodexCli(true);
@@ -31,18 +53,30 @@ export function CodexSettingsTab() {
       if (api?.setup?.getCodexStatus) {
         const result = await api.setup.getCodexStatus();
         if (result.success) {
+          // Update setup store
           setCodexCliStatus({
             installed: result.installed,
             version: result.version,
             path: result.path,
-            method: result.method,
+            method: result.auth?.method || 'none',
+          });
+          // Update display status
+          setDisplayCliStatus({
+            success: true,
+            status: result.installed ? 'installed' : 'not_installed',
+            method: result.auth?.method,
+            version: result.version || undefined,
+            path: result.path || undefined,
           });
           if (result.auth) {
             setCodexAuthStatus({
               authenticated: result.auth.authenticated,
-              method: result.auth.method,
-              hasAuthFile: result.auth.hasAuthFile,
-              hasOAuthToken: result.auth.hasOAuthToken,
+              method: result.auth.method as
+                | 'cli_authenticated'
+                | 'api_key'
+                | 'api_key_env'
+                | 'none',
+              hasAuthFile: result.auth.method === 'cli_authenticated',
               hasApiKey: result.auth.hasApiKey,
             });
           }
@@ -80,9 +114,13 @@ export function CodexSettingsTab() {
         autoLoadCodexAgents={codexAutoLoadAgents}
         codexSandboxMode={codexSandboxMode}
         codexApprovalPolicy={codexApprovalPolicy}
+        codexEnableWebSearch={codexEnableWebSearch}
+        codexEnableImages={codexEnableImages}
         onAutoLoadCodexAgentsChange={setCodexAutoLoadAgents}
         onCodexSandboxModeChange={setCodexSandboxMode}
         onCodexApprovalPolicyChange={setCodexApprovalPolicy}
+        onCodexEnableWebSearchChange={setCodexEnableWebSearch}
+        onCodexEnableImagesChange={setCodexEnableImages}
       />
       {showUsageTracking && <CodexUsageSection />}
     </div>

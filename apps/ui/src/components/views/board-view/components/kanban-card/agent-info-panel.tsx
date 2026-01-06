@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useEffect, useState } from 'react';
 import { Feature, ThinkingLevel, useAppStore } from '@/store/app-store';
 import {

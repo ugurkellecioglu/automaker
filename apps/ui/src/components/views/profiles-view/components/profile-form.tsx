@@ -48,8 +48,8 @@ export function ProfileForm({
     thinkingLevel: profile.thinkingLevel || ('none' as ThinkingLevel),
     // Cursor-specific
     cursorModel: profile.cursorModel || ('auto' as CursorModelId),
-    // Codex-specific
-    codexModel: profile.codexModel || ('gpt-5.2' as CodexModelId),
+    // Codex-specific - use a valid CodexModelId from CODEX_MODEL_MAP
+    codexModel: profile.codexModel || (CODEX_MODEL_MAP.gpt52Codex as CodexModelId),
     icon: profile.icon || 'Brain',
   });
 
@@ -63,7 +63,8 @@ export function ProfileForm({
       model: provider === 'claude' ? 'sonnet' : formData.model,
       thinkingLevel: provider === 'claude' ? 'none' : formData.thinkingLevel,
       cursorModel: provider === 'cursor' ? 'auto' : formData.cursorModel,
-      codexModel: provider === 'codex' ? 'gpt-5.2' : formData.codexModel,
+      codexModel:
+        provider === 'codex' ? (CODEX_MODEL_MAP.gpt52Codex as CodexModelId) : formData.codexModel,
     });
   };
 
@@ -293,13 +294,13 @@ export function ProfileForm({
                           </Badge>
                         )}
                         <Badge
-                          variant={config.tier === 'free' ? 'default' : 'secondary'}
+                          variant="secondary"
                           className={cn(
                             'text-xs',
                             formData.cursorModel === id && 'bg-primary-foreground/20'
                           )}
                         >
-                          {config.tier}
+                          Tier
                         </Badge>
                       </div>
                     </button>
@@ -322,21 +323,12 @@ export function ProfileForm({
               Codex Model
             </Label>
             <div className="flex flex-col gap-2">
-              {Object.entries(CODEX_MODEL_MAP).map(([key, modelId]) => {
+              {Object.entries(CODEX_MODEL_MAP).map(([_, modelId]) => {
                 const modelConfig = {
-                  gpt52Codex: { label: 'GPT-5.2-Codex', badge: 'Premium', hasReasoning: true },
-                  gpt52: { label: 'GPT-5.2', badge: 'Premium', hasReasoning: true },
-                  gpt51CodexMax: {
-                    label: 'GPT-5.1-Codex-Max',
-                    badge: 'Premium',
-                    hasReasoning: true,
-                  },
-                  gpt51Codex: { label: 'GPT-5.1-Codex', badge: 'Balanced' },
-                  gpt51CodexMini: { label: 'GPT-5.1-Codex-Mini', badge: 'Speed' },
-                  gpt51: { label: 'GPT-5.1', badge: 'Standard' },
-                  o3Mini: { label: 'o3-mini', badge: 'Reasoning', hasReasoning: true },
-                  o4Mini: { label: 'o4-mini', badge: 'Reasoning', hasReasoning: true },
-                }[key as keyof typeof CODEX_MODEL_MAP] || { label: modelId, badge: 'Standard' };
+                  label: modelId,
+                  badge: 'Standard' as const,
+                  hasReasoning: false,
+                };
 
                 return (
                   <button

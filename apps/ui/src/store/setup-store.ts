@@ -124,7 +124,7 @@ export interface SetupState {
   cursorCliStatus: CursorCliStatus | null;
 
   // Codex CLI state
-  codexCliStatus: CodexCliStatus | null;
+  codexCliStatus: CliStatus | null;
   codexAuthStatus: CodexAuthStatus | null;
   codexInstallProgress: InstallProgress;
 
@@ -153,7 +153,7 @@ export interface SetupActions {
   setCursorCliStatus: (status: CursorCliStatus | null) => void;
 
   // Codex CLI
-  setCodexCliStatus: (status: CodexCliStatus | null) => void;
+  setCodexCliStatus: (status: CliStatus | null) => void;
   setCodexAuthStatus: (status: CodexAuthStatus | null) => void;
   setCodexInstallProgress: (progress: Partial<InstallProgress>) => void;
   resetCodexInstallProgress: () => void;

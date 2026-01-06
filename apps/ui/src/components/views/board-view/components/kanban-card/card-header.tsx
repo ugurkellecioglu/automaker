@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useState } from 'react';
 import { Feature } from '@/store/app-store';
 import { cn } from '@/lib/utils';

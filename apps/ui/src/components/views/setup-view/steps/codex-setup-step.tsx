@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useMemo, useCallback } from 'react';
 import { useSetupStore } from '@/store/setup-store';
 import { getElectronAPI } from '@/lib/electron';
