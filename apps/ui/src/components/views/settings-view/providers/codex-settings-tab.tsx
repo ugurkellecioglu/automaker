@@ -1,27 +1,35 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useAppStore } from '@/store/app-store';
 import { useSetupStore } from '@/store/setup-store';
 import { CodexCliStatus } from '../cli-status/codex-cli-status';
 import { CodexSettings } from '../codex/codex-settings';
 import { CodexUsageSection } from '../codex/codex-usage-section';
-import { Info } from 'lucide-react';
+import { CodexModelConfiguration } from './codex-model-configuration';
 import { getElectronAPI } from '@/lib/electron';
 import { createLogger } from '@automaker/utils/logger';
 import type { CliStatus as SharedCliStatus } from '../shared/types';
+import type { CodexModelId } from '@automaker/types';
 
 const logger = createLogger('CodexSettings');
 
 export function CodexSettingsTab() {
-  // TODO: Add these to app-store
-  const [codexAutoLoadAgents, setCodexAutoLoadAgents] = useState(false);
-  const [codexSandboxMode, setCodexSandboxMode] = useState<
-    'read-only' | 'workspace-write' | 'danger-full-access'
-  >('read-only');
-  const [codexApprovalPolicy, setCodexApprovalPolicy] = useState<
-    'untrusted' | 'on-failure' | 'on-request' | 'never'
-  >('untrusted');
-  const [codexEnableWebSearch, setCodexEnableWebSearch] = useState(false);
-  const [codexEnableImages, setCodexEnableImages] = useState(false);
+  const {
+    codexAutoLoadAgents,
+    codexSandboxMode,
+    codexApprovalPolicy,
+    codexEnableWebSearch,
+    codexEnableImages,
+    enabledCodexModels,
+    codexDefaultModel,
+    setCodexAutoLoadAgents,
+    setCodexSandboxMode,
+    setCodexApprovalPolicy,
+    setCodexEnableWebSearch,
+    setCodexEnableImages,
+    setEnabledCodexModels,
+    setCodexDefaultModel,
+    toggleCodexModel,
+  } = useAppStore();
 
   const {
     codexAuthStatus,
@@ -32,8 +40,8 @@ export function CodexSettingsTab() {
 
   const [isCheckingCodexCli, setIsCheckingCodexCli] = useState(false);
   const [displayCliStatus, setDisplayCliStatus] = useState<SharedCliStatus | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
-  // Convert setup-store CliStatus to shared/types CliStatus for display
   const codexCliStatus: SharedCliStatus | null =
     displayCliStatus ||
     (setupCliStatus
@@ -46,27 +54,27 @@ export function CodexSettingsTab() {
         }
       : null);
 
-  const handleRefreshCodexCli = useCallback(async () => {
-    setIsCheckingCodexCli(true);
-    try {
+  // Load Codex CLI status on mount
+  useEffect(() => {
+    const checkCodexStatus = async () => {
       const api = getElectronAPI();
       if (api?.setup?.getCodexStatus) {
-        const result = await api.setup.getCodexStatus();
-        if (result.success) {
-          // Update setup store
+        try {
+          const result = await api.setup.getCodexStatus();
+          setDisplayCliStatus({
+            success: result.success,
+            status: result.installed ? 'installed' : 'not_installed',
+            method: result.auth?.method,
+            version: result.version,
+            path: result.path,
+            recommendation: result.recommendation,
+            installCommands: result.installCommands,
+          });
           setCodexCliStatus({
             installed: result.installed,
             version: result.version,
             path: result.path,
             method: result.auth?.method || 'none',
-          });
-          // Update display status
-          setDisplayCliStatus({
-            success: true,
-            status: result.installed ? 'installed' : 'not_installed',
-            method: result.auth?.method,
-            version: result.version || undefined,
-            path: result.path || undefined,
           });
           if (result.auth) {
             setCodexAuthStatus({
@@ -80,6 +88,42 @@ export function CodexSettingsTab() {
               hasApiKey: result.auth.hasApiKey,
             });
           }
+        } catch (error) {
+          logger.error('Failed to check Codex CLI status:', error);
+        }
+      }
+    };
+    checkCodexStatus();
+  }, [setCodexCliStatus, setCodexAuthStatus]);
+
+  const handleRefreshCodexCli = useCallback(async () => {
+    setIsCheckingCodexCli(true);
+    try {
+      const api = getElectronAPI();
+      if (api?.setup?.getCodexStatus) {
+        const result = await api.setup.getCodexStatus();
+        setDisplayCliStatus({
+          success: result.success,
+          status: result.installed ? 'installed' : 'not_installed',
+          method: result.auth?.method,
+          version: result.version,
+          path: result.path,
+          recommendation: result.recommendation,
+          installCommands: result.installCommands,
+        });
+        setCodexCliStatus({
+          installed: result.installed,
+          version: result.version,
+          path: result.path,
+          method: result.auth?.method || 'none',
+        });
+        if (result.auth) {
+          setCodexAuthStatus({
+            authenticated: result.auth.authenticated,
+            method: result.auth.method as 'cli_authenticated' | 'api_key' | 'api_key_env' | 'none',
+            hasAuthFile: result.auth.method === 'cli_authenticated',
+            hasApiKey: result.auth.hasApiKey,
+          });
         }
       }
     } catch (error) {
@@ -89,27 +133,50 @@ export function CodexSettingsTab() {
     }
   }, [setCodexCliStatus, setCodexAuthStatus]);
 
-  // Show usage tracking when CLI is authenticated
+  const handleDefaultModelChange = useCallback(
+    (model: CodexModelId) => {
+      setIsSaving(true);
+      try {
+        setCodexDefaultModel(model);
+      } finally {
+        setIsSaving(false);
+      }
+    },
+    [setCodexDefaultModel]
+  );
+
+  const handleModelToggle = useCallback(
+    (model: CodexModelId, enabled: boolean) => {
+      setIsSaving(true);
+      try {
+        toggleCodexModel(model, enabled);
+      } finally {
+        setIsSaving(false);
+      }
+    },
+    [toggleCodexModel]
+  );
+
   const showUsageTracking = codexAuthStatus?.authenticated ?? false;
 
   return (
     <div className="space-y-6">
-      {/* Usage Info */}
-      <div className="flex items-start gap-3 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-        <Info className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
-        <div className="text-sm text-emerald-400/90">
-          <span className="font-medium">OpenAI via Codex CLI</span>
-          <p className="text-xs text-emerald-400/70 mt-1">
-            Access GPT models with tool support for advanced coding workflows.
-          </p>
-        </div>
-      </div>
-
       <CodexCliStatus
         status={codexCliStatus}
         isChecking={isCheckingCodexCli}
         onRefresh={handleRefreshCodexCli}
       />
+
+      {showUsageTracking && <CodexUsageSection />}
+
+      <CodexModelConfiguration
+        enabledCodexModels={enabledCodexModels}
+        codexDefaultModel={codexDefaultModel}
+        isSaving={isSaving}
+        onDefaultModelChange={handleDefaultModelChange}
+        onModelToggle={handleModelToggle}
+      />
+
       <CodexSettings
         autoLoadCodexAgents={codexAutoLoadAgents}
         codexSandboxMode={codexSandboxMode}
@@ -122,7 +189,6 @@ export function CodexSettingsTab() {
         onCodexEnableWebSearchChange={setCodexEnableWebSearch}
         onCodexEnableImagesChange={setCodexEnableImages}
       />
-      {showUsageTracking && <CodexUsageSection />}
     </div>
   );
 }

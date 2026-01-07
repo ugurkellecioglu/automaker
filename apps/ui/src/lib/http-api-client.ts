@@ -1220,12 +1220,13 @@ export class HttpApiClient implements ElectronAPI {
     }> => this.post('/api/setup/auth-codex'),
 
     verifyCodexAuth: (
-      authMethod?: 'cli' | 'api_key'
+      authMethod: 'cli' | 'api_key',
+      apiKey?: string
     ): Promise<{
       success: boolean;
       authenticated: boolean;
       error?: string;
-    }> => this.post('/api/setup/verify-codex-auth', { authMethod }),
+    }> => this.post('/api/setup/verify-codex-auth', { authMethod, apiKey }),
 
     onInstallProgress: (callback: (progress: unknown) => void) => {
       return this.subscribeToEvent('agent:stream', callback);

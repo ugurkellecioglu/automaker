@@ -32,6 +32,7 @@ import {
   supportsReasoningEffort,
   type CodexApprovalPolicy,
   type CodexSandboxMode,
+  type CodexAuthStatus,
 } from '@automaker/types';
 import { CodexConfigManager } from './codex-config-manager.js';
 import { executeCodexSdkQuery } from './codex-sdk-client.js';
@@ -56,6 +57,7 @@ const CODEX_OUTPUT_SCHEMA_FLAG = '--output-schema';
 const CODEX_CONFIG_FLAG = '--config';
 const CODEX_IMAGE_FLAG = '--image';
 const CODEX_ADD_DIR_FLAG = '--add-dir';
+const CODEX_SKIP_GIT_REPO_CHECK_FLAG = '--skip-git-repo-check';
 const CODEX_RESUME_FLAG = 'resume';
 const CODEX_REASONING_EFFORT_KEY = 'reasoning_effort';
 const OPENAI_API_KEY_ENV = 'OPENAI_API_KEY';
@@ -742,7 +744,7 @@ export class CodexProvider extends BaseProvider {
       }
 
       const configOverrides = buildConfigOverrides(overrides);
-      const globalArgs = [CODEX_APPROVAL_FLAG, approvalPolicy];
+      const globalArgs = [CODEX_SKIP_GIT_REPO_CHECK_FLAG, CODEX_APPROVAL_FLAG, approvalPolicy];
       if (searchEnabled) {
         globalArgs.push(CODEX_SEARCH_FLAG);
       }
@@ -781,6 +783,12 @@ export class CodexProvider extends BaseProvider {
       for await (const rawEvent of stream) {
         const event = rawEvent as Record<string, unknown>;
         const eventType = getEventType(event);
+
+        // Track thread/session ID from events
+        const threadId = event.thread_id;
+        if (threadId && typeof threadId === 'string') {
+          this._lastSessionId = threadId;
+        }
 
         if (eventType === CODEX_EVENT_TYPES.error) {
           const errorText = extractText(event.error ?? event.message) || 'Codex CLI error';
@@ -985,4 +993,121 @@ export class CodexProvider extends BaseProvider {
     // Return all available Codex/OpenAI models
     return CODEX_MODELS;
   }
+
+  /**
+   * Check authentication status for Codex CLI
+   */
+  async checkAuth(): Promise<CodexAuthStatus> {
+    const cliPath = await findCodexCliPath();
+    const hasApiKey = !!process.env[OPENAI_API_KEY_ENV];
+    const authIndicators = await getCodexAuthIndicators();
+
+    // Check for API key in environment
+    if (hasApiKey) {
+      return { authenticated: true, method: 'api_key' };
+    }
+
+    // Check for OAuth/token from Codex CLI
+    if (authIndicators.hasOAuthToken || authIndicators.hasApiKey) {
+      return { authenticated: true, method: 'oauth' };
+    }
+
+    // CLI is installed but not authenticated
+    if (cliPath) {
+      try {
+        const result = await spawnProcess({
+          command: cliPath || CODEX_COMMAND,
+          args: ['auth', 'status', '--json'],
+          cwd: process.cwd(),
+        });
+        // If auth command succeeds, we're authenticated
+        if (result.exitCode === 0) {
+          return { authenticated: true, method: 'oauth' };
+        }
+      } catch {
+        // Auth command failed, not authenticated
+      }
+    }
+
+    return { authenticated: false, method: 'none' };
+  }
+
+  /**
+   * Deduplicate text blocks in Codex assistant messages
+   *
+   * Codex can send:
+   * 1. Duplicate consecutive text blocks (same text twice in a row)
+   * 2. A final accumulated block containing ALL previous text
+   *
+   * This method filters out these duplicates to prevent UI stuttering.
+   */
+  private deduplicateTextBlocks(
+    content: Array<{ type: string; text?: string }>,
+    lastTextBlock: string,
+    accumulatedText: string
+  ): { content: Array<{ type: string; text?: string }>; lastBlock: string; accumulated: string } {
+    const filtered: Array<{ type: string; text?: string }> = [];
+    let newLastBlock = lastTextBlock;
+    let newAccumulated = accumulatedText;
+
+    for (const block of content) {
+      if (block.type !== 'text' || !block.text) {
+        filtered.push(block);
+        continue;
+      }
+
+      const text = block.text;
+
+      // Skip empty text
+      if (!text.trim()) continue;
+
+      // Skip duplicate consecutive text blocks
+      if (text === newLastBlock) {
+        continue;
+      }
+
+      // Skip final accumulated text block
+      // Codex sends one large block containing ALL previous text at the end
+      if (newAccumulated.length > 100 && text.length > newAccumulated.length * 0.8) {
+        const normalizedAccum = newAccumulated.replace(/\s+/g, ' ').trim();
+        const normalizedNew = text.replace(/\s+/g, ' ').trim();
+        if (normalizedNew.includes(normalizedAccum.slice(0, 100))) {
+          // This is the final accumulated block, skip it
+          continue;
+        }
+      }
+
+      // This is a valid new text block
+      newLastBlock = text;
+      newAccumulated += text;
+      filtered.push(block);
+    }
+
+    return { content: filtered, lastBlock: newLastBlock, accumulated: newAccumulated };
+  }
+
+  /**
+   * Get the detected CLI path (public accessor for status endpoints)
+   */
+  async getCliPath(): Promise<string | null> {
+    const path = await findCodexCliPath();
+    return path || null;
+  }
+
+  /**
+   * Get the last CLI session ID (for tracking across queries)
+   * This can be used to resume sessions in subsequent requests
+   */
+  getLastSessionId(): string | null {
+    return this._lastSessionId ?? null;
+  }
+
+  /**
+   * Set a session ID to use for CLI session resumption
+   */
+  setSessionId(sessionId: string | null): void {
+    this._lastSessionId = sessionId;
+  }
+
+  private _lastSessionId: string | null = null;
 }

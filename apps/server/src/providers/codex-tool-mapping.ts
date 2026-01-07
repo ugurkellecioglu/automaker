@@ -16,6 +16,8 @@ const TOOL_NAME_WRITE = 'Write';
 const TOOL_NAME_GREP = 'Grep';
 const TOOL_NAME_GLOB = 'Glob';
 const TOOL_NAME_TODO = 'TodoWrite';
+const TOOL_NAME_DELETE = 'Delete';
+const TOOL_NAME_LS = 'Ls';
 
 const INPUT_KEY_COMMAND = 'command';
 const INPUT_KEY_FILE_PATH = 'file_path';
@@ -37,6 +39,8 @@ const WRAPPER_COMMANDS = new Set(['sudo', 'env', 'command']);
 const READ_COMMANDS = new Set(['cat', 'sed', 'head', 'tail', 'less', 'more', 'bat', 'stat', 'wc']);
 const SEARCH_COMMANDS = new Set(['rg', 'grep', 'ag', 'ack']);
 const GLOB_COMMANDS = new Set(['ls', 'find', 'fd', 'tree']);
+const DELETE_COMMANDS = new Set(['rm', 'del', 'erase', 'remove', 'unlink']);
+const LIST_COMMANDS = new Set(['ls', 'dir', 'll', 'la']);
 const WRITE_COMMANDS = new Set(['tee', 'touch', 'mkdir']);
 const APPLY_PATCH_COMMAND = 'apply_patch';
 const APPLY_PATCH_PATTERN = /\bapply_patch\b/;
@@ -193,6 +197,18 @@ function extractRedirectionTarget(command: string): string | null {
   return match?.[1] ?? null;
 }
 
+function extractFilePathFromDeleteTokens(tokens: string[]): string | null {
+  // rm file.txt or rm /path/to/file.txt
+  // Skip flags and get the first non-flag argument
+  for (let i = 1; i < tokens.length; i++) {
+    const token = tokens[i];
+    if (token && !token.startsWith('-')) {
+      return token;
+    }
+  }
+  return null;
+}
+
 function hasSedInPlaceFlag(tokens: string[]): boolean {
   return tokens.some((token) => SED_IN_PLACE_FLAGS.has(token) || token.startsWith('-i'));
 }
@@ -276,6 +292,41 @@ export function resolveCodexToolCall(command: string): CodexToolResolution {
     return {
       name: TOOL_NAME_GREP,
       input: buildInputWithPattern(extractSearchPattern(tokens)),
+    };
+  }
+
+  // Handle Delete commands (rm, del, erase, remove, unlink)
+  if (DELETE_COMMANDS.has(commandToken)) {
+    // Skip if -r or -rf flags (recursive delete should go to Bash)
+    if (
+      tokens.some((token) => token === '-r' || token === '-rf' || token === '-f' || token === '-rf')
+    ) {
+      return {
+        name: TOOL_NAME_BASH,
+        input: { [INPUT_KEY_COMMAND]: normalized },
+      };
+    }
+    // Simple file deletion - extract the file path
+    const filePath = extractFilePathFromDeleteTokens(tokens);
+    if (filePath) {
+      return {
+        name: TOOL_NAME_DELETE,
+        input: { path: filePath },
+      };
+    }
+    // Fall back to bash if we can't determine the file path
+    return {
+      name: TOOL_NAME_BASH,
+      input: { [INPUT_KEY_COMMAND]: normalized },
+    };
+  }
+
+  // Handle simple Ls commands (just listing, not find/glob)
+  if (LIST_COMMANDS.has(commandToken)) {
+    const filePath = extractFilePathFromTokens(tokens);
+    return {
+      name: TOOL_NAME_LS,
+      input: { path: filePath || '.' },
     };
   }
 

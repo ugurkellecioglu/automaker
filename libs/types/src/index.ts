@@ -21,7 +21,13 @@ export type {
 } from './provider.js';
 
 // Codex CLI types
-export type { CodexSandboxMode, CodexApprovalPolicy, CodexCliConfig } from './codex.js';
+export type {
+  CodexSandboxMode,
+  CodexApprovalPolicy,
+  CodexCliConfig,
+  CodexAuthStatus,
+} from './codex.js';
+export * from './codex-models.js';
 
 // Feature types
 export type { Feature, FeatureImagePath, FeatureTextFilePath, FeatureStatus } from './feature.js';

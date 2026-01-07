@@ -82,7 +82,10 @@ function isRateLimitError(text: string): boolean {
 
 export function createVerifyCodexAuthHandler() {
   return async (req: Request, res: Response): Promise<void> => {
-    const { authMethod } = req.body as { authMethod?: 'cli' | 'api_key' };
+    const { authMethod, apiKey } = req.body as {
+      authMethod?: 'cli' | 'api_key';
+      apiKey?: string;
+    };
 
     // Create session ID for cleanup
     const sessionId = `codex-auth-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -105,21 +108,32 @@ export function createVerifyCodexAuthHandler() {
 
     try {
       // Create secure environment without modifying process.env
-      const authEnv = createSecureAuthEnv(authMethod || 'api_key', undefined, 'openai');
+      const authEnv = createSecureAuthEnv(authMethod || 'api_key', apiKey, 'openai');
 
-      // For API key auth, use stored key
+      // For API key auth, validate and use the provided key or stored key
       if (authMethod === 'api_key') {
-        const storedApiKey = getApiKey('openai');
-        if (storedApiKey) {
-          const validation = validateApiKey(storedApiKey, 'openai');
+        if (apiKey) {
+          // Use the provided API key
+          const validation = validateApiKey(apiKey, 'openai');
           if (!validation.isValid) {
             res.json({ success: true, authenticated: false, error: validation.error });
             return;
           }
           authEnv[OPENAI_API_KEY_ENV] = validation.normalizedKey;
-        } else if (!authEnv[OPENAI_API_KEY_ENV]) {
-          res.json({ success: true, authenticated: false, error: ERROR_API_KEY_REQUIRED });
-          return;
+        } else {
+          // Try stored key
+          const storedApiKey = getApiKey('openai');
+          if (storedApiKey) {
+            const validation = validateApiKey(storedApiKey, 'openai');
+            if (!validation.isValid) {
+              res.json({ success: true, authenticated: false, error: validation.error });
+              return;
+            }
+            authEnv[OPENAI_API_KEY_ENV] = validation.normalizedKey;
+          } else if (!authEnv[OPENAI_API_KEY_ENV]) {
+            res.json({ success: true, authenticated: false, error: ERROR_API_KEY_REQUIRED });
+            return;
+          }
         }
       }
 

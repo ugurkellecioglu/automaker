@@ -11,6 +11,7 @@ import type {
   ModelProvider,
   AIProfile,
   CursorModelId,
+  CodexModelId,
   PhaseModelConfig,
   PhaseModelKey,
   PhaseModelEntry,
@@ -20,7 +21,7 @@ import type {
   PipelineStep,
   PromptCustomization,
 } from '@automaker/types';
-import { getAllCursorModelIds, DEFAULT_PHASE_MODELS } from '@automaker/types';
+import { getAllCursorModelIds, getAllCodexModelIds, DEFAULT_PHASE_MODELS } from '@automaker/types';
 
 // Re-export types for convenience
 export type {
@@ -515,6 +516,15 @@ export interface AppState {
   enabledCursorModels: CursorModelId[]; // Which Cursor models are available in feature modal
   cursorDefaultModel: CursorModelId; // Default Cursor model selection
 
+  // Codex CLI Settings (global)
+  enabledCodexModels: CodexModelId[]; // Which Codex models are available in feature modal
+  codexDefaultModel: CodexModelId; // Default Codex model selection
+  codexAutoLoadAgents: boolean; // Auto-load .codex/AGENTS.md files
+  codexSandboxMode: 'read-only' | 'workspace-write' | 'danger-full-access'; // Sandbox policy
+  codexApprovalPolicy: 'untrusted' | 'on-failure' | 'on-request' | 'never'; // Approval policy
+  codexEnableWebSearch: boolean; // Enable web search capability
+  codexEnableImages: boolean; // Enable image processing
+
   // Claude Agent SDK Settings
   autoLoadClaudeMd: boolean; // Auto-load CLAUDE.md files using SDK's settingSources option
   enableSandboxMode: boolean; // Enable sandbox mode for bash commands (may cause issues on some systems)
@@ -852,6 +862,20 @@ export interface AppActions {
   setCursorDefaultModel: (model: CursorModelId) => void;
   toggleCursorModel: (model: CursorModelId, enabled: boolean) => void;
 
+  // Codex CLI Settings actions
+  setEnabledCodexModels: (models: CodexModelId[]) => void;
+  setCodexDefaultModel: (model: CodexModelId) => void;
+  toggleCodexModel: (model: CodexModelId, enabled: boolean) => void;
+  setCodexAutoLoadAgents: (enabled: boolean) => Promise<void>;
+  setCodexSandboxMode: (
+    mode: 'read-only' | 'workspace-write' | 'danger-full-access'
+  ) => Promise<void>;
+  setCodexApprovalPolicy: (
+    policy: 'untrusted' | 'on-failure' | 'on-request' | 'never'
+  ) => Promise<void>;
+  setCodexEnableWebSearch: (enabled: boolean) => Promise<void>;
+  setCodexEnableImages: (enabled: boolean) => Promise<void>;
+
   // Claude Agent SDK Settings actions
   setAutoLoadClaudeMd: (enabled: boolean) => Promise<void>;
   setEnableSandboxMode: (enabled: boolean) => Promise<void>;
@@ -1076,6 +1100,13 @@ const initialState: AppState = {
   favoriteModels: [],
   enabledCursorModels: getAllCursorModelIds(), // All Cursor models enabled by default
   cursorDefaultModel: 'auto', // Default to auto selection
+  enabledCodexModels: getAllCodexModelIds(), // All Codex models enabled by default
+  codexDefaultModel: 'gpt-5.2-codex', // Default to GPT-5.2-Codex
+  codexAutoLoadAgents: false, // Default to disabled (user must opt-in)
+  codexSandboxMode: 'workspace-write', // Default to workspace-write for safety
+  codexApprovalPolicy: 'on-request', // Default to on-request for balanced safety
+  codexEnableWebSearch: false, // Default to disabled
+  codexEnableImages: false, // Default to disabled
   autoLoadClaudeMd: false, // Default to disabled (user must opt-in)
   enableSandboxMode: false, // Default to disabled (can be enabled for additional security)
   skipSandboxWarning: false, // Default to disabled (show sandbox warning dialog)
@@ -1760,6 +1791,41 @@ export const useAppStore = create<AppState & AppActions>()(
             ? [...state.enabledCursorModels, model]
             : state.enabledCursorModels.filter((m) => m !== model),
         })),
+
+      // Codex CLI Settings actions
+      setEnabledCodexModels: (models) => set({ enabledCodexModels: models }),
+      setCodexDefaultModel: (model) => set({ codexDefaultModel: model }),
+      toggleCodexModel: (model, enabled) =>
+        set((state) => ({
+          enabledCodexModels: enabled
+            ? [...state.enabledCodexModels, model]
+            : state.enabledCodexModels.filter((m) => m !== model),
+        })),
+      setCodexAutoLoadAgents: async (enabled) => {
+        set({ codexAutoLoadAgents: enabled });
+        const { syncSettingsToServer } = await import('@/hooks/use-settings-migration');
+        await syncSettingsToServer();
+      },
+      setCodexSandboxMode: async (mode) => {
+        set({ codexSandboxMode: mode });
+        const { syncSettingsToServer } = await import('@/hooks/use-settings-migration');
+        await syncSettingsToServer();
+      },
+      setCodexApprovalPolicy: async (policy) => {
+        set({ codexApprovalPolicy: policy });
+        const { syncSettingsToServer } = await import('@/hooks/use-settings-migration');
+        await syncSettingsToServer();
+      },
+      setCodexEnableWebSearch: async (enabled) => {
+        set({ codexEnableWebSearch: enabled });
+        const { syncSettingsToServer } = await import('@/hooks/use-settings-migration');
+        await syncSettingsToServer();
+      },
+      setCodexEnableImages: async (enabled) => {
+        set({ codexEnableImages: enabled });
+        const { syncSettingsToServer } = await import('@/hooks/use-settings-migration');
+        await syncSettingsToServer();
+      },
 
       // Claude Agent SDK Settings actions
       setAutoLoadClaudeMd: async (enabled) => {
@@ -3073,6 +3139,13 @@ export const useAppStore = create<AppState & AppActions>()(
           phaseModels: state.phaseModels,
           enabledCursorModels: state.enabledCursorModels,
           cursorDefaultModel: state.cursorDefaultModel,
+          enabledCodexModels: state.enabledCodexModels,
+          codexDefaultModel: state.codexDefaultModel,
+          codexAutoLoadAgents: state.codexAutoLoadAgents,
+          codexSandboxMode: state.codexSandboxMode,
+          codexApprovalPolicy: state.codexApprovalPolicy,
+          codexEnableWebSearch: state.codexEnableWebSearch,
+          codexEnableImages: state.codexEnableImages,
           autoLoadClaudeMd: state.autoLoadClaudeMd,
           enableSandboxMode: state.enableSandboxMode,
           skipSandboxWarning: state.skipSandboxWarning,

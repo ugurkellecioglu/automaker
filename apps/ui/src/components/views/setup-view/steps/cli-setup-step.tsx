@@ -75,7 +75,10 @@ interface CliSetupConfig {
   buildClearedAuthStatus: (previous: CliSetupAuthStatus | null) => CliSetupAuthStatus;
   statusApi: () => Promise<any>;
   installApi: () => Promise<any>;
-  verifyAuthApi: (method: 'cli' | 'api_key') => Promise<{
+  verifyAuthApi: (
+    method: 'cli' | 'api_key',
+    apiKey?: string
+  ) => Promise<{
     success: boolean;
     authenticated: boolean;
     error?: string;
@@ -194,7 +197,7 @@ export function CliSetupStep({ config, state, onNext, onBack, onSkip }: CliSetup
     setApiKeyVerificationError(null);
 
     try {
-      const result = await config.verifyAuthApi('api_key');
+      const result = await config.verifyAuthApi('api_key', apiKey);
 
       const hasLimitOrBillingError =
         result.error?.toLowerCase().includes('limit reached') ||

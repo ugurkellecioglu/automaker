@@ -173,8 +173,17 @@ export class ProviderFactory {
         model.id === modelId ||
         model.modelString === modelId ||
         model.id.endsWith(`-${modelId}`) ||
-        model.modelString === modelId.replace(/^(claude|cursor|codex)-/, '')
+        model.modelString.endsWith(`-${modelId}`) ||
+        model.modelString === modelId.replace(/^(claude|cursor|codex)-/, '') ||
+        model.modelString === modelId.replace(/-(claude|cursor|codex)$/, '')
       ) {
+        return model.supportsVision ?? true;
+      }
+    }
+
+    // Also try exact match with model string from provider's model map
+    for (const model of models) {
+      if (model.modelString === modelId || model.id === modelId) {
         return model.supportsVision ?? true;
       }
     }

@@ -42,3 +42,11 @@ export interface CodexCliConfig {
   /** List of enabled models */
   models?: string[];
 }
+
+/** Codex authentication status */
+export interface CodexAuthStatus {
+  authenticated: boolean;
+  method: 'oauth' | 'api_key' | 'none';
+  hasCredentialsFile?: boolean;
+  error?: string;
+}

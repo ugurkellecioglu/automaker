@@ -31,8 +31,8 @@ export function CodexSetupStep({ onNext, onBack, onSkip }: CodexSetupStepProps) 
   );
 
   const verifyAuthApi = useCallback(
-    (method: 'cli' | 'api_key') =>
-      getElectronAPI().setup?.verifyCodexAuth(method) || Promise.reject(),
+    (method: 'cli' | 'api_key', apiKey?: string) =>
+      getElectronAPI().setup?.verifyCodexAuth(method, apiKey) || Promise.reject(),
     []
   );
 

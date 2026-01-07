@@ -14,8 +14,15 @@ import { useNavigate } from '@tanstack/react-router';
 
 export function ApiKeysSection() {
   const { apiKeys, setApiKeys } = useAppStore();
-  const { claudeAuthStatus, setClaudeAuthStatus, setSetupComplete } = useSetupStore();
+  const {
+    claudeAuthStatus,
+    setClaudeAuthStatus,
+    codexAuthStatus,
+    setCodexAuthStatus,
+    setSetupComplete,
+  } = useSetupStore();
   const [isDeletingAnthropicKey, setIsDeletingAnthropicKey] = useState(false);
+  const [isDeletingOpenaiKey, setIsDeletingOpenaiKey] = useState(false);
   const navigate = useNavigate();
 
   const { providerConfigParams, handleSave, saved } = useApiKeyManagement();
@@ -50,6 +57,34 @@ export function ApiKeysSection() {
       setIsDeletingAnthropicKey(false);
     }
   }, [apiKeys, setApiKeys, claudeAuthStatus, setClaudeAuthStatus]);
+
+  // Delete OpenAI API key
+  const deleteOpenaiKey = useCallback(async () => {
+    setIsDeletingOpenaiKey(true);
+    try {
+      const api = getElectronAPI();
+      if (!api.setup?.deleteApiKey) {
+        toast.error('Delete API not available');
+        return;
+      }
+
+      const result = await api.setup.deleteApiKey('openai');
+      if (result.success) {
+        setApiKeys({ ...apiKeys, openai: '' });
+        setCodexAuthStatus({
+          authenticated: false,
+          method: 'none',
+        });
+        toast.success('OpenAI API key deleted');
+      } else {
+        toast.error(result.error || 'Failed to delete API key');
+      }
+    } catch (error) {
+      toast.error('Failed to delete API key');
+    } finally {
+      setIsDeletingOpenaiKey(false);
+    }
+  }, [apiKeys, setApiKeys, setCodexAuthStatus]);
 
   // Open setup wizard
   const openSetupWizard = useCallback(() => {
@@ -135,6 +170,23 @@ export function ApiKeysSection() {
                 <Trash2 className="w-4 h-4 mr-2" />
               )}
               Delete Anthropic Key
+            </Button>
+          )}
+
+          {apiKeys.openai && (
+            <Button
+              onClick={deleteOpenaiKey}
+              disabled={isDeletingOpenaiKey}
+              variant="outline"
+              className="h-10 border-red-500/30 text-red-500 hover:bg-red-500/10 hover:border-red-500/50"
+              data-testid="delete-openai-key"
+            >
+              {isDeletingOpenaiKey ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Trash2 className="w-4 h-4 mr-2" />
+              )}
+              Delete OpenAI Key
             </Button>
           )}
         </div>
