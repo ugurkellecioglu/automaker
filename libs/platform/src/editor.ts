@@ -13,22 +13,11 @@ import { homedir } from 'os';
 import { join } from 'path';
 import { access } from 'fs/promises';
 import type { EditorInfo } from '@automaker/types';
-import { createLogger } from '@automaker/utils';
-
 const execFileAsync = promisify(execFile);
 
 // Platform detection
 const isWindows = process.platform === 'win32';
 const isMac = process.platform === 'darwin';
-
-// Lazy-initialized logger for editor detection
-let logger: ReturnType<typeof createLogger> | null = null;
-function getLogger() {
-  if (!logger) {
-    logger = createLogger('editor');
-  }
-  return logger;
-}
 
 // Cache with TTL for editor detection
 let cachedEditors: EditorInfo[] | null = null;
@@ -158,7 +147,7 @@ async function isXcodeFullyInstalled(): Promise<boolean> {
       const xcodeAppPath = await findMacApp('Xcode');
 
       if (xedExists && xcodeAppPath) {
-        getLogger().warn(
+        console.warn(
           'Xcode is installed but xcode-select is pointing to Command Line Tools. ' +
             'To use Xcode as an editor, run: sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer'
         );
